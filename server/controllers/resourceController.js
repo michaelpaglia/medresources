@@ -1,5 +1,4 @@
 // server/controllers/resourceController.js
-
 const db = require('../db/connection');
 const npiHealthcareService = require('../services/npiHealthcareService');
 const dataEnrichmentService = require('../services/dataEnrichmentService');
@@ -29,6 +28,13 @@ async function getAllResources(req, res) {
 async function getResourceById(req, res) {
   try {
     const { id } = req.params;
+    console.log('Getting resource by ID:', id);
+    
+    // Validate ID is a number
+    if (isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid resource ID' });
+    }
+    
     const result = await db.query(
       'SELECT * FROM resources WHERE id = $1',
       [id]
@@ -111,6 +117,9 @@ async function searchResources(req, res) {
     // Add sorting
     sqlQuery += ' ORDER BY name ASC';
     
+    console.log('Executing search query:', sqlQuery);
+    console.log('With parameters:', params);
+    
     const result = await db.query(sqlQuery, params);
     res.json(result.rows);
   } catch (error) {
@@ -127,6 +136,7 @@ async function searchResources(req, res) {
 async function getResourcesByZipCode(req, res) {
   try {
     const { zipCode, radius, specialty } = req.query;
+    console.log('Getting resources by ZIP code:', zipCode);
     
     if (!zipCode) {
       return res.status(400).json({ error: 'ZIP code is required' });
@@ -147,34 +157,6 @@ async function getResourcesByZipCode(req, res) {
     const radiusMiles = radius ? parseInt(radius) : 10;
     const providers = await npiHealthcareService.findProvidersInZipCode(zipCode, specialty || '');
     
-    
-
-
-    for (const provider of providers) {
-      try {
-        // Only process providers with missing data
-        if (
-          provider.accepts_uninsured === false &&
-          provider.sliding_scale === false &&
-          provider.free_care_available === false
-        ) {
-          // Enrich provider data with AI
-          const enrichedProvider = await dataEnrichmentService.enrichProviderData(provider);
-          
-          // Update provider with enriched data
-          provider.accepts_uninsured = enrichedProvider.accepts_uninsured;
-          provider.sliding_scale = enrichedProvider.sliding_scale;
-          provider.free_care_available = enrichedProvider.free_care_available;
-          provider.notes = enrichedProvider.notes;
-        }
-      } catch (error) {
-        console.error(`Error enriching data for provider ${provider.name}:`, error);
-        // Continue with next provider
-      }
-    }
-
-
-
     // Store providers in database
     for (const provider of providers) {
       try {
@@ -185,6 +167,13 @@ async function getResourcesByZipCode(req, res) {
         );
         
         if (existingProvider.rows.length === 0) {
+          console.log('New provider found:', provider.name);
+          
+          // Enrich provider data
+          console.log('Enriching provider data...');
+          const enrichedProvider = await dataEnrichmentService.enrichProviderData(provider);
+          console.log('Data enrichment complete');
+          
           // Insert new provider
           await db.query(`
             INSERT INTO resources (
@@ -194,25 +183,29 @@ async function getResourcesByZipCode(req, res) {
               latitude, longitude, created_at, updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
           `, [
-            provider.name,
-            provider.resource_type_id,
-            provider.address_line1,
-            provider.address_line2,
-            provider.city,
-            provider.state,
-            provider.zip,
-            provider.phone,
-            provider.website,
-            provider.email,
-            provider.hours,
-            provider.eligibility_criteria,
-            false, // Default to false for accepts_uninsured (unknown from NPI data)
-            false, // Default to false for sliding_scale (unknown from NPI data)
-            false, // Default to false for free_care_available (unknown from NPI data)
-            provider.notes,
-            provider.latitude,
-            provider.longitude
+            enrichedProvider.name,
+            enrichedProvider.resource_type_id,
+            enrichedProvider.address_line1,
+            enrichedProvider.address_line2,
+            enrichedProvider.city,
+            enrichedProvider.state,
+            enrichedProvider.zip,
+            enrichedProvider.phone,
+            enrichedProvider.website,
+            enrichedProvider.email,
+            enrichedProvider.hours,
+            enrichedProvider.eligibility_criteria,
+            enrichedProvider.accepts_uninsured,
+            enrichedProvider.sliding_scale,
+            enrichedProvider.free_care_available,
+            enrichedProvider.notes,
+            enrichedProvider.latitude,
+            enrichedProvider.longitude
           ]);
+          
+          console.log('Provider inserted into database');
+        } else {
+          console.log(`Provider already exists: ${provider.name}`);
         }
       } catch (error) {
         console.error(`Error adding provider ${provider.name}:`, error);
@@ -229,7 +222,7 @@ async function getResourcesByZipCode(req, res) {
     res.json(updatedResources.rows);
   } catch (error) {
     console.error('Error getting resources by ZIP code:', error);
-    res.status(500).json({ error: 'Failed to retrieve resources' });
+    res.status(500).json({ error: 'Failed to retrieve resources by location' });
   }
 }
 
@@ -241,6 +234,7 @@ async function getResourcesByZipCode(req, res) {
 async function loadResourcesForLocation(req, res) {
   try {
     const { zipCode, radius, specialty } = req.body;
+    console.log('Loading resources for location:', zipCode);
     
     if (!zipCode) {
       return res.status(400).json({ error: 'ZIP code is required' });
@@ -284,6 +278,8 @@ async function loadResourcesForLocation(req, res) {
       });
     }
     
+    console.log(`Found ${providers.length} providers`);
+    
     // Store providers in database
     let addedCount = 0;
     for (const provider of providers) {
@@ -295,6 +291,10 @@ async function loadResourcesForLocation(req, res) {
         );
         
         if (existingProvider.rows.length === 0) {
+          // Enrich provider data
+          console.log(`Enriching data for provider: ${provider.name}`);
+          const enrichedProvider = await dataEnrichmentService.enrichProviderData(provider);
+          
           // Insert new provider
           await db.query(`
             INSERT INTO resources (
@@ -304,27 +304,30 @@ async function loadResourcesForLocation(req, res) {
               latitude, longitude, created_at, updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
           `, [
-            provider.name,
-            provider.resource_type_id,
-            provider.address_line1,
-            provider.address_line2,
-            provider.city,
-            provider.state,
-            provider.zip,
-            provider.phone,
-            provider.website,
-            provider.email,
-            provider.hours,
-            provider.eligibility_criteria,
-            false, // Default to false for accepts_uninsured (unknown from NPI data)
-            false, // Default to false for sliding_scale (unknown from NPI data)
-            false, // Default to false for free_care_available (unknown from NPI data)
-            provider.notes,
-            provider.latitude,
-            provider.longitude
+            enrichedProvider.name,
+            enrichedProvider.resource_type_id,
+            enrichedProvider.address_line1,
+            enrichedProvider.address_line2,
+            enrichedProvider.city,
+            enrichedProvider.state,
+            enrichedProvider.zip,
+            enrichedProvider.phone,
+            enrichedProvider.website,
+            enrichedProvider.email,
+            enrichedProvider.hours,
+            enrichedProvider.eligibility_criteria,
+            enrichedProvider.accepts_uninsured,
+            enrichedProvider.sliding_scale,
+            enrichedProvider.free_care_available,
+            enrichedProvider.notes,
+            enrichedProvider.latitude,
+            enrichedProvider.longitude
           ]);
           
           addedCount++;
+          console.log(`Added provider: ${enrichedProvider.name}`);
+        } else {
+          console.log(`Skipped (already exists): ${provider.name}`);
         }
       } catch (error) {
         console.error(`Error adding provider ${provider.name}:`, error);
@@ -343,7 +346,20 @@ async function loadResourcesForLocation(req, res) {
   }
 }
 
-
+// Test function to check OpenAI integration
+async function testOpenAI(req, res) {
+  try {
+    const result = await dataEnrichmentService.testOpenAIConnection();
+    if (result) {
+      res.json({ success: true, message: 'OpenAI connection successful' });
+    } else {
+      res.status(500).json({ error: 'OpenAI connection failed. Check server logs for details.' });
+    }
+  } catch (error) {
+    console.error('Error testing OpenAI:', error);
+    res.status(500).json({ error: 'Error testing OpenAI connection' });
+  }
+}
 
 module.exports = {
   getAllResources,
@@ -351,5 +367,6 @@ module.exports = {
   getResourcesByType,
   searchResources,
   getResourcesByZipCode,
-  loadResourcesForLocation
+  loadResourcesForLocation,
+  testOpenAI
 };
