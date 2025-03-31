@@ -1,345 +1,324 @@
-// Resource Controller Implementation
+// server/controllers/resourceController.js
+
 const db = require('../db/connection');
+const npiHealthcareService = require('../services/npiHealthcareService');
 
-// Get all resources
-const getAllResources = async (req, res) => {
+/**
+ * Get all resources
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function getAllResources(req, res) {
   try {
-    // Limit to 10 resources by default to avoid overwhelming responses
-    const result = await db.query('SELECT * FROM resources ORDER BY name LIMIT 10');
+    const result = await db.query(
+      'SELECT * FROM resources ORDER BY name ASC'
+    );
     res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching resources:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
+  } catch (error) {
+    console.error('Error getting all resources:', error);
+    res.status(500).json({ error: 'Failed to retrieve resources' });
   }
-};
+}
 
-// Get a single resource by ID with its related data
-const getResourceById = async (req, res) => {
+/**
+ * Get resource by ID
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function getResourceById(req, res) {
   try {
-    const resourceId = req.params.id;
+    const { id } = req.params;
+    const result = await db.query(
+      'SELECT * FROM resources WHERE id = $1',
+      [id]
+    );
     
-    // Get the main resource info
-    const resourceQuery = 'SELECT * FROM resources WHERE id = $1';
-    const resourceResult = await db.query(resourceQuery, [resourceId]);
-    
-    if (resourceResult.rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Resource not found' });
     }
     
-    const resource = resourceResult.rows[0];
-    
-    // Get resource type
-    const typeQuery = `
-      SELECT rt.name as type_name, rt.description as type_description 
-      FROM resource_types rt 
-      WHERE rt.id = $1
-    `;
-    const typeResult = await db.query(typeQuery, [resource.resource_type_id]);
-    if (typeResult.rows.length > 0) {
-      resource.type = typeResult.rows[0];
-    }
-    
-    // Get services
-    const servicesQuery = `
-      SELECT s.* FROM services s
-      JOIN resource_services rs ON s.id = rs.service_id
-      WHERE rs.resource_id = $1
-    `;
-    const servicesResult = await db.query(servicesQuery, [resourceId]);
-    resource.services = servicesResult.rows;
-    
-    // Get insurances
-    const insurancesQuery = `
-      SELECT i.* FROM insurance_types i
-      JOIN resource_insurances ri ON i.id = ri.insurance_id
-      WHERE ri.resource_id = $1
-    `;
-    const insurancesResult = await db.query(insurancesQuery, [resourceId]);
-    resource.insurances = insurancesResult.rows;
-    
-    // Get languages
-    const languagesQuery = `
-      SELECT l.* FROM languages l
-      JOIN resource_languages rl ON l.id = rl.language_id
-      WHERE rl.resource_id = $1
-    `;
-    const languagesResult = await db.query(languagesQuery, [resourceId]);
-    resource.languages = languagesResult.rows;
-    
-    // Get transportation options
-    const transportationQuery = `
-      SELECT t.*, rt.notes FROM transportation_options t
-      JOIN resource_transportation rt ON t.id = rt.transportation_id
-      WHERE rt.resource_id = $1
-    `;
-    const transportationResult = await db.query(transportationQuery, [resourceId]);
-    resource.transportation = transportationResult.rows;
-    
-    // Get feedback
-    const feedbackQuery = `
-      SELECT * FROM resource_feedback
-      WHERE resource_id = $1
-      ORDER BY created_at DESC
-    `;
-    const feedbackResult = await db.query(feedbackQuery, [resourceId]);
-    resource.feedback = feedbackResult.rows;
-    
-    res.json(resource);
-  } catch (err) {
-    console.error('Error fetching resource by ID:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error getting resource by ID:', error);
+    res.status(500).json({ error: 'Failed to retrieve resource' });
   }
-};
+}
 
-// Search resources with filtering
-const searchResources = async (req, res) => {
+/**
+ * Get resources by type
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function getResourcesByType(req, res) {
   try {
-    const {
-      name,
-      resourceType,
-      service,
-      insurance,
-      language,
-      acceptsUninsured,
-      slidingScale,
-      freeCare,
-      zip,
-      city,
-      latitude,
-      longitude,
-      radius // in miles
+    const { typeId } = req.params;
+    const result = await db.query(
+      'SELECT * FROM resources WHERE resource_type_id = $1 ORDER BY name ASC',
+      [typeId]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error getting resources by type:', error);
+    res.status(500).json({ error: 'Failed to retrieve resources' });
+  }
+}
+
+/**
+ * Search resources
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function searchResources(req, res) {
+  try {
+    // Extract search parameters
+    const { 
+      query, 
+      resourceType, 
+      acceptsUninsured, 
+      slidingScale, 
+      freeCare 
     } = req.query;
-
-    // Start building the query
-    let query = `
-      SELECT DISTINCT r.* 
-      FROM resources r
-    `;
-
-    // Add joins based on filters
-    const joins = [];
-    const where = [];
+    
+    // Build query
+    let sqlQuery = 'SELECT * FROM resources WHERE 1=1';
     const params = [];
-    let paramCounter = 1;
-
-    if (service) {
-      joins.push(`JOIN resource_services rs ON r.id = rs.resource_id`);
-      where.push(`rs.service_id = $${paramCounter++}`);
-      params.push(service);
+    
+    // Add filters
+    if (query) {
+      params.push(`%${query}%`);
+      sqlQuery += ` AND (name ILIKE $${params.length} OR notes ILIKE $${params.length})`;
     }
-
-    if (insurance) {
-      joins.push(`JOIN resource_insurances ri ON r.id = ri.resource_id`);
-      where.push(`ri.insurance_id = $${paramCounter++}`);
-      params.push(insurance);
-    }
-
-    if (language) {
-      joins.push(`JOIN resource_languages rl ON r.id = rl.resource_id`);
-      where.push(`rl.language_id = $${paramCounter++}`);
-      params.push(language);
-    }
-
-    // Add filters for the main resource properties
-    if (name) {
-      where.push(`r.name ILIKE $${paramCounter++}`);
-      params.push(`%${name}%`);
-    }
-
+    
     if (resourceType) {
-      where.push(`r.resource_type_id = $${paramCounter++}`);
       params.push(resourceType);
+      sqlQuery += ` AND resource_type_id = $${params.length}`;
     }
-
+    
     if (acceptsUninsured === 'true') {
-      where.push(`r.accepts_uninsured = true`);
+      sqlQuery += ' AND accepts_uninsured = TRUE';
     }
-
+    
     if (slidingScale === 'true') {
-      where.push(`r.sliding_scale = true`);
+      sqlQuery += ' AND sliding_scale = TRUE';
     }
-
+    
     if (freeCare === 'true') {
-      where.push(`r.free_care_available = true`);
+      sqlQuery += ' AND free_care_available = TRUE';
     }
-
-    if (zip) {
-      where.push(`r.zip = $${paramCounter++}`);
-      params.push(zip);
-    }
-
-    if (city) {
-      where.push(`LOWER(r.city) = LOWER($${paramCounter++})`);
-      params.push(city);
-    }
-
-    // Add distance calculation if coordinates and radius provided
-    if (latitude && longitude && radius) {
-      // Using Haversine formula to calculate distance in miles
-      where.push(`
-        (3963 * acos(
-          cos(radians($${paramCounter++})) * 
-          cos(radians(r.latitude)) * 
-          cos(radians(r.longitude) - radians($${paramCounter++})) + 
-          sin(radians($${paramCounter++})) * 
-          sin(radians(r.latitude))
-        )) <= $${paramCounter++}
-      `);
-      params.push(latitude, longitude, latitude, radius);
-    }
-
-    // Finish building the query
-    query += joins.join(' ');
     
-    if (where.length > 0) {
-      query += ` WHERE ${where.join(' AND ')}`;
-    }
-
-    query += ` ORDER BY r.name`;
-
-    const result = await db.query(query, params);
+    // Add sorting
+    sqlQuery += ' ORDER BY name ASC';
     
-    // For each resource, get its type name
-    for (const resource of result.rows) {
-      const typeQuery = `
-        SELECT name FROM resource_types WHERE id = $1
-      `;
-      const typeResult = await db.query(typeQuery, [resource.resource_type_id]);
-      if (typeResult.rows.length > 0) {
-        resource.type_name = typeResult.rows[0].name;
+    const result = await db.query(sqlQuery, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error searching resources:', error);
+    res.status(500).json({ error: 'Failed to search resources' });
+  }
+}
+
+/**
+ * Get resources by ZIP code
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function getResourcesByZipCode(req, res) {
+  try {
+    const { zipCode, radius, specialty } = req.query;
+    
+    if (!zipCode) {
+      return res.status(400).json({ error: 'ZIP code is required' });
+    }
+    
+    // First check if we have resources in this ZIP code
+    const existingResources = await db.query(
+      'SELECT * FROM resources WHERE zip = $1',
+      [zipCode]
+    );
+    
+    // If we already have sufficient resources, return them
+    if (existingResources.rows.length >= 5) {
+      return res.json(existingResources.rows);
+    }
+    
+    // Otherwise, fetch from NPI API and store in database
+    const radiusMiles = radius ? parseInt(radius) : 10;
+    const providers = await npiHealthcareService.findProvidersInZipCode(zipCode, specialty || '');
+    
+    // Store providers in database
+    for (const provider of providers) {
+      try {
+        // Check if provider already exists
+        const existingProvider = await db.query(
+          'SELECT id FROM resources WHERE name = $1 AND address_line1 = $2',
+          [provider.name, provider.address_line1]
+        );
+        
+        if (existingProvider.rows.length === 0) {
+          // Insert new provider
+          await db.query(`
+            INSERT INTO resources (
+              name, resource_type_id, address_line1, address_line2, city, state, zip,
+              phone, website, email, hours, eligibility_criteria, 
+              accepts_uninsured, sliding_scale, free_care_available, notes,
+              latitude, longitude, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+          `, [
+            provider.name,
+            provider.resource_type_id,
+            provider.address_line1,
+            provider.address_line2,
+            provider.city,
+            provider.state,
+            provider.zip,
+            provider.phone,
+            provider.website,
+            provider.email,
+            provider.hours,
+            provider.eligibility_criteria,
+            false, // Default to false for accepts_uninsured (unknown from NPI data)
+            false, // Default to false for sliding_scale (unknown from NPI data)
+            false, // Default to false for free_care_available (unknown from NPI data)
+            provider.notes,
+            provider.latitude,
+            provider.longitude
+          ]);
+        }
+      } catch (error) {
+        console.error(`Error adding provider ${provider.name}:`, error);
+        // Continue with other providers
       }
     }
     
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error searching resources:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-};
-
-// Get resource types
-const getResourceTypes = async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM resource_types ORDER BY name');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching resource types:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-};
-
-// Get services
-const getServices = async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM services ORDER BY name');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching services:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-};
-
-// Get insurance types
-const getInsuranceTypes = async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM insurance_types ORDER BY name');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching insurance types:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-};
-
-// Get languages
-const getLanguages = async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM languages ORDER BY name');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching languages:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-};
-
-// Get transportation options
-const getTransportationOptions = async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM transportation_options ORDER BY name');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching transportation options:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-};
-
-// Get medication programs
-const getMedicationPrograms = async (req, res) => {
-  try {
-    const { medication, programType } = req.query;
+    // Get updated resources for this ZIP code
+    const updatedResources = await db.query(
+      'SELECT * FROM resources WHERE zip = $1',
+      [zipCode]
+    );
     
-    let query = 'SELECT * FROM medication_programs';
-    const params = [];
-    const where = [];
-    let paramCounter = 1;
+    res.json(updatedResources.rows);
+  } catch (error) {
+    console.error('Error getting resources by ZIP code:', error);
+    res.status(500).json({ error: 'Failed to retrieve resources' });
+  }
+}
+
+/**
+ * Load resources for a new location (administrative endpoint)
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function loadResourcesForLocation(req, res) {
+  try {
+    const { zipCode, radius, specialty } = req.body;
     
-    if (medication) {
-      where.push(`covered_medications ILIKE $${paramCounter++}`);
-      params.push(`%${medication}%`);
+    if (!zipCode) {
+      return res.status(400).json({ error: 'ZIP code is required' });
     }
     
-    if (programType) {
-      where.push(`program_type = $${paramCounter++}`);
-      params.push(programType);
+    const radiusMiles = radius ? parseInt(radius) : 10;
+    let providers = [];
+    
+    if (specialty) {
+      // Search for specific specialty
+      providers = await npiHealthcareService.findProvidersInZipCode(zipCode, specialty);
+    } else {
+      // Search for multiple specialties
+      const specialties = [
+        '', // General search
+        'primary care',
+        'family medicine',
+        'pediatrics',
+        'pharmacy',
+        'dentist',
+        'mental health'
+      ];
+      
+      for (const spec of specialties) {
+        const specProviders = await npiHealthcareService.findProvidersInZipCode(zipCode, spec);
+        providers = [...providers, ...specProviders];
+        
+        // Add a small delay to avoid overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Remove duplicates
+      const seen = new Set();
+      providers = providers.filter(provider => {
+        const key = `${provider.name}-${provider.address_line1}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
     }
     
-    if (where.length > 0) {
-      query += ` WHERE ${where.join(' AND ')}`;
+    // Store providers in database
+    let addedCount = 0;
+    for (const provider of providers) {
+      try {
+        // Check if provider already exists
+        const existingProvider = await db.query(
+          'SELECT id FROM resources WHERE name = $1 AND address_line1 = $2',
+          [provider.name, provider.address_line1]
+        );
+        
+        if (existingProvider.rows.length === 0) {
+          // Insert new provider
+          await db.query(`
+            INSERT INTO resources (
+              name, resource_type_id, address_line1, address_line2, city, state, zip,
+              phone, website, email, hours, eligibility_criteria, 
+              accepts_uninsured, sliding_scale, free_care_available, notes,
+              latitude, longitude, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+          `, [
+            provider.name,
+            provider.resource_type_id,
+            provider.address_line1,
+            provider.address_line2,
+            provider.city,
+            provider.state,
+            provider.zip,
+            provider.phone,
+            provider.website,
+            provider.email,
+            provider.hours,
+            provider.eligibility_criteria,
+            false, // Default to false for accepts_uninsured (unknown from NPI data)
+            false, // Default to false for sliding_scale (unknown from NPI data)
+            false, // Default to false for free_care_available (unknown from NPI data)
+            provider.notes,
+            provider.latitude,
+            provider.longitude
+          ]);
+          
+          addedCount++;
+        }
+      } catch (error) {
+        console.error(`Error adding provider ${provider.name}:`, error);
+        // Continue with other providers
+      }
     }
     
-    query += ' ORDER BY name';
-    
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching medication programs:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.json({ 
+      success: true, 
+      message: `Added ${addedCount} new resources for ZIP code ${zipCode}.`,
+      total: providers.length
+    });
+  } catch (error) {
+    console.error('Error loading resources for location:', error);
+    res.status(500).json({ error: 'Failed to load resources' });
   }
-};
+}
 
-// Submit feedback for a resource
-const submitFeedback = async (req, res) => {
-  try {
-    const resourceId = req.params.id;
-    const { rating, comment } = req.body;
-    
-    if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ error: 'Rating is required and must be between 1 and 5' });
-    }
-    
-    const query = `
-      INSERT INTO resource_feedback (resource_id, rating, comment)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-    
-    const result = await db.query(query, [resourceId, rating, comment || null]);
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error('Error submitting feedback:', err);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-};
-
-// Export all controller functions
 module.exports = {
   getAllResources,
   getResourceById,
+  getResourcesByType,
   searchResources,
-  getResourceTypes,
-  getServices,
-  getInsuranceTypes,
-  getLanguages,
-  getTransportationOptions,
-  getMedicationPrograms,
-  submitFeedback
+  getResourcesByZipCode,
+  loadResourcesForLocation
 };
