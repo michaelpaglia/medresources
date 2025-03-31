@@ -2,6 +2,7 @@
 
 const db = require('../db/connection');
 const npiHealthcareService = require('../services/npiHealthcareService');
+const dataEnrichmentService = require('../services/dataEnrichmentService');
 
 /**
  * Get all resources
@@ -146,6 +147,34 @@ async function getResourcesByZipCode(req, res) {
     const radiusMiles = radius ? parseInt(radius) : 10;
     const providers = await npiHealthcareService.findProvidersInZipCode(zipCode, specialty || '');
     
+    
+
+
+    for (const provider of providers) {
+      try {
+        // Only process providers with missing data
+        if (
+          provider.accepts_uninsured === false &&
+          provider.sliding_scale === false &&
+          provider.free_care_available === false
+        ) {
+          // Enrich provider data with AI
+          const enrichedProvider = await dataEnrichmentService.enrichProviderData(provider);
+          
+          // Update provider with enriched data
+          provider.accepts_uninsured = enrichedProvider.accepts_uninsured;
+          provider.sliding_scale = enrichedProvider.sliding_scale;
+          provider.free_care_available = enrichedProvider.free_care_available;
+          provider.notes = enrichedProvider.notes;
+        }
+      } catch (error) {
+        console.error(`Error enriching data for provider ${provider.name}:`, error);
+        // Continue with next provider
+      }
+    }
+
+
+
     // Store providers in database
     for (const provider of providers) {
       try {
@@ -313,6 +342,8 @@ async function loadResourcesForLocation(req, res) {
     res.status(500).json({ error: 'Failed to load resources' });
   }
 }
+
+
 
 module.exports = {
   getAllResources,
