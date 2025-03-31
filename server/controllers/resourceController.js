@@ -346,9 +346,10 @@ async function loadResourcesForLocation(req, res) {
   }
 }
 
-// Test function to check OpenAI integration
+// In resourceController.js
 async function testOpenAI(req, res) {
   try {
+    console.log('Testing OpenAI connection...');
     const result = await dataEnrichmentService.testOpenAIConnection();
     if (result) {
       res.json({ success: true, message: 'OpenAI connection successful' });
