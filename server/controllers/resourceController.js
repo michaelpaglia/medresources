@@ -282,6 +282,8 @@ async function loadResourcesForLocation(req, res) {
     
     // Store providers in database
     let addedCount = 0;
+    let enrichmentFailures = 0;
+    
     for (const provider of providers) {
       try {
         // Check if provider already exists
@@ -291,54 +293,68 @@ async function loadResourcesForLocation(req, res) {
         );
         
         if (existingProvider.rows.length === 0) {
-          // Enrich provider data
+          // Enrich provider data with OpenAI
           console.log(`Enriching data for provider: ${provider.name}`);
           const enrichedProvider = await dataEnrichmentService.enrichProviderData(provider);
           
-          // Insert new provider
-          await db.query(`
-            INSERT INTO resources (
-              name, resource_type_id, address_line1, address_line2, city, state, zip,
-              phone, website, email, hours, eligibility_criteria, 
-              accepts_uninsured, sliding_scale, free_care_available, notes,
-              latitude, longitude, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
-          `, [
-            enrichedProvider.name,
-            enrichedProvider.resource_type_id,
-            enrichedProvider.address_line1,
-            enrichedProvider.address_line2,
-            enrichedProvider.city,
-            enrichedProvider.state,
-            enrichedProvider.zip,
-            enrichedProvider.phone,
-            enrichedProvider.website,
-            enrichedProvider.email,
-            enrichedProvider.hours,
-            enrichedProvider.eligibility_criteria,
-            enrichedProvider.accepts_uninsured,
-            enrichedProvider.sliding_scale,
-            enrichedProvider.free_care_available,
-            enrichedProvider.notes,
-            enrichedProvider.latitude,
-            enrichedProvider.longitude
-          ]);
+          // Verify that OpenAI enrichment was successful
+          const enrichmentSuccessful = 
+            enrichedProvider.notes.includes('AI analysis') && 
+            !enrichedProvider.notes.includes('failed') &&
+            !enrichedProvider.notes.includes('fallback');
           
-          addedCount++;
-          console.log(`Added provider: ${enrichedProvider.name}`);
+          if (enrichmentSuccessful) {
+            // Insert new provider
+            await db.query(`
+              INSERT INTO resources (
+                name, resource_type_id, address_line1, address_line2, city, state, zip,
+                phone, website, email, hours, eligibility_criteria, 
+                accepts_uninsured, sliding_scale, free_care_available, notes,
+                latitude, longitude, created_at, updated_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+            `, [
+              enrichedProvider.name,
+              enrichedProvider.resource_type_id,
+              enrichedProvider.address_line1,
+              enrichedProvider.address_line2,
+              enrichedProvider.city,
+              enrichedProvider.state,
+              enrichedProvider.zip,
+              enrichedProvider.phone,
+              enrichedProvider.website,
+              enrichedProvider.email,
+              enrichedProvider.hours,
+              enrichedProvider.eligibility_criteria,
+              enrichedProvider.accepts_uninsured,
+              enrichedProvider.sliding_scale,
+              enrichedProvider.free_care_available,
+              enrichedProvider.notes,
+              enrichedProvider.latitude,
+              enrichedProvider.longitude
+            ]);
+            
+            addedCount++;
+            console.log(`Added provider: ${enrichedProvider.name}`);
+          } else {
+            enrichmentFailures++;
+            console.log(`Skipped provider due to failed enrichment: ${provider.name}`);
+          }
         } else {
           console.log(`Skipped (already exists): ${provider.name}`);
         }
       } catch (error) {
         console.error(`Error adding provider ${provider.name}:`, error);
+        enrichmentFailures++;
         // Continue with other providers
       }
     }
     
     res.json({ 
       success: true, 
-      message: `Added ${addedCount} new resources for ZIP code ${zipCode}.`,
-      total: providers.length
+      message: `Added ${addedCount} new resources for ZIP code ${zipCode}. Failed to enrich ${enrichmentFailures} providers.`,
+      total: providers.length,
+      added: addedCount,
+      failed: enrichmentFailures
     });
   } catch (error) {
     console.error('Error loading resources for location:', error);

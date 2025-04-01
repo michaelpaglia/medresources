@@ -2,6 +2,22 @@
 const axios = require('axios');
 require('dotenv').config();
 
+const RATE_LIMIT_DELAY = 20000; // 20 seconds in milliseconds
+let lastRequestTime = 0;
+
+async function waitForRateLimit() {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
+    const waitTime = RATE_LIMIT_DELAY - timeSinceLastRequest;
+    console.log(`Rate limiting: waiting ${waitTime}ms before next OpenAI API call`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  
+  lastRequestTime = Date.now();
+}
+
 /**
  * Enriches provider data by using AI to validate/research missing fields
  * @param {Object} provider - Provider object with potentially missing data
@@ -44,7 +60,8 @@ async function enrichProviderData(provider) {
     `;
     
     console.log('Sending request to OpenAI API...');
-    
+    await waitForRateLimit();
+
     // Call OpenAI API
     try {
       const response = await axios.post(
