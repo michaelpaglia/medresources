@@ -1,0 +1,139 @@
+/* styles/AboutPage.css */
+
+.about-page {
+    padding: var(--space-md);
+  }
+  
+  .about-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-xl);
+  }
+  
+  .about-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+  }
+  
+  .about-header h1 {
+    color: var(--primary-dark);
+    position: relative;
+    padding-bottom: var(--space-md);
+  }
+  
+  .about-header h1::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 3px;
+    background-color: var(--secondary-color);
+  }
+  
+  .about-section {
+    margin-bottom: var(--space-2xl);
+  }
+  
+  .about-section h2 {
+    color: var(--primary-color);
+    margin-bottom: var(--space-md);
+    border-bottom: 1px solid var(--neutral-300);
+    padding-bottom: var(--space-sm);
+  }
+  
+  .about-list {
+    margin-left: var(--space-xl);
+    margin-bottom: var(--space-lg);
+  }
+  
+  .about-list li {
+    margin-bottom: var(--space-sm);
+  }
+  
+  .how-it-works-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    margin: var(--space-lg) 0;
+  }
+  
+  .how-card {
+    flex: 1 1 300px;
+    background-color: var(--neutral-200);
+    border-radius: var(--border-radius-md);
+    padding: var(--space-lg);
+    text-align: center;
+    transition: transform var(--transition-medium);
+  }
+  
+  .how-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .how-icon {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-bottom: var(--space-md);
+  }
+  
+  .how-card h3 {
+    color: var(--primary-dark);
+    margin-bottom: var(--space-md);
+  }
+  
+  .contact-info {
+    background-color: var(--primary-light);
+    border-radius: var(--border-radius-md);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+  }
+  
+  .contact-method {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-md);
+  }
+  
+  .contact-method i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin-right: var(--space-md);
+  }
+  
+  .feedback-cta {
+    background-color: var(--neutral-200);
+    border-radius: var(--border-radius-md);
+    padding: var(--space-lg);
+    text-align: center;
+  }
+  
+  .feedback-cta h3 {
+    color: var(--primary-dark);
+    margin-bottom: var(--space-md);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .about-container {
+      padding: var(--space-lg);
+    }
+    
+    .how-it-works-cards {
+      flex-direction: column;
+    }
+    
+    .contact-method {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .contact-method i {
+      margin-right: 0;
+      margin-bottom: var(--space-sm);
+    }
+  }

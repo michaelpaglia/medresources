@@ -1,0 +1,92 @@
+/* styles/LocationSearch.css */
+
+.location-search {
+    background-color: var(--primary-light);
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .location-search-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    align-items: flex-end;
+  }
+  
+  .field-group {
+    flex: 1;
+    min-width: 150px;
+  }
+  
+  .field-group label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    font-weight: 600;
+    color: var(--primary-dark);
+  }
+  
+  .field-group input,
+  .field-group select {
+    width: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--neutral-400);
+    border-radius: var(--border-radius-md);
+    font-size: 1rem;
+  }
+  
+  .field-group input:focus,
+  .field-group select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(43, 122, 155, 0.2);
+  }
+  
+  .search-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    padding: var(--space-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    min-width: 150px;
+    height: 48px; /* Match the height of inputs */
+  }
+  
+  .search-button:hover {
+    background-color: var(--primary-dark);
+  }
+  
+  .search-button:disabled {
+    background-color: var(--neutral-500);
+    cursor: not-allowed;
+  }
+  
+  .search-error {
+    color: var(--danger);
+    padding: var(--space-md);
+    margin-top: var(--space-md);
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: var(--border-radius-md);
+    font-weight: 500;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .location-search-fields {
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    
+    .field-group {
+      width: 100%;
+    }
+    
+    .search-button {
+      width: 100%;
+      margin-top: var(--space-sm);
+    }
+  }
