@@ -1,23 +1,43 @@
 // pages/HomePage.js
 import React from 'react';
 import { Link } from 'react-router-dom';
+import GoogleSearchBar from '../components/GoogleSearchBar';
 import '../styles/HomePage.css';
 
 const HomePage = () => {
   return (
-    <div className="home-page">
-      <section className="hero">
-        <div className="hero-content">
-          <h1>Find Affordable Medical Care in Troy, NY</h1>
-          <p className="hero-tagline">
-            Connecting you with free and low-cost healthcare resources in your community
-          </p>
-          <div className="hero-actions">
-            <Link to="/search" className="btn btn-primary btn-large">
-              Find Resources
+    <div className="home-page google-style">
+      <section className="google-hero">
+        <GoogleSearchBar />
+        
+        <div className="quick-links">
+          <div className="link-row">
+            <Link to="/search?type=1" className="quick-link">
+              <div className="quick-link-icon health-center">
+                <i className="icon-healthcare"></i>
+              </div>
+              <span>Health Centers</span>
             </Link>
-            <Link to="/eligibility" className="btn btn-secondary btn-large">
-              Check Your Eligibility
+            
+            <Link to="/search?type=3" className="quick-link">
+              <div className="quick-link-icon pharmacy">
+                <i className="icon-pharmacy"></i>
+              </div>
+              <span>Pharmacies</span>
+            </Link>
+            
+            <Link to="/search?type=4" className="quick-link">
+              <div className="quick-link-icon dental">
+                <i className="icon-dental"></i>
+              </div>
+              <span>Dental Care</span>
+            </Link>
+            
+            <Link to="/search?type=5" className="quick-link">
+              <div className="quick-link-icon mental-health">
+                <i className="icon-mental-health"></i>
+              </div>
+              <span>Mental Health</span>
             </Link>
           </div>
         </div>
@@ -43,6 +63,7 @@ const HomePage = () => {
             <p className="feature-description">
               Answer a few questions to find programs you may qualify for based on your situation.
             </p>
+            <Link to="/eligibility" className="feature-link">Check Eligibility</Link>
           </div>
           
           <div className="feature-card">
@@ -54,53 +75,6 @@ const HomePage = () => {
               View resources on a map to find care options close to you and public transportation.
             </p>
           </div>
-        </div>
-      </section>
-
-      <section className="resource-categories">
-        <h2 className="section-title">Browse Resources by Category</h2>
-        <div className="category-container">
-          <Link to="/search?type=1" className="category-card">
-            <div className="category-icon">
-              <i className="icon-healthcare"></i>
-            </div>
-            <h3 className="category-title">Primary Care</h3>
-          </Link>
-          
-          <Link to="/search?type=3" className="category-card">
-            <div className="category-icon">
-              <i className="icon-pharmacy"></i>
-            </div>
-            <h3 className="category-title">Medication Help</h3>
-          </Link>
-          
-          <Link to="/search?type=4" className="category-card">
-            <div className="category-icon">
-              <i className="icon-dental"></i>
-            </div>
-            <h3 className="category-title">Dental Care</h3>
-          </Link>
-          
-          <Link to="/search?type=5" className="category-card">
-            <div className="category-icon">
-              <i className="icon-mental-health"></i>
-            </div>
-            <h3 className="category-title">Mental Health</h3>
-          </Link>
-          
-          <Link to="/search?type=6" className="category-card">
-            <div className="category-icon">
-              <i className="icon-transportation"></i>
-            </div>
-            <h3 className="category-title">Transportation</h3>
-          </Link>
-          
-          <Link to="/search" className="category-card view-all">
-            <div className="category-icon">
-              <i className="icon-grid"></i>
-            </div>
-            <h3 className="category-title">View All</h3>
-          </Link>
         </div>
       </section>
 

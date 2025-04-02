@@ -1,140 +1,227 @@
-/* styles/Navbar.css */
+/* styles/Navbar.css - Google Style */
 
-.navbar {
-    background-color: var(--primary-dark);
-    color: white;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: var(--shadow-md);
-  }
-  
-  .navbar-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem var(--space-md);
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  .navbar-logo {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    color: white;
-  }
-  
-  .logo-image {
-    height: 2rem;
-    margin-right: var(--space-sm);
-  }
-  
-  .logo-text {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: white;
+.navbar.google-style {
+  background-color: #fff;
+  color: #5f6368;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
+  height: 64px;
+}
+
+.navbar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  max-width: 1600px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #5f6368;
+  margin-right: 20px;
+}
+
+.google-small-logo {
+  font-family: 'Product Sans', Arial, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.google-small-logo .blue {
+  color: #4285F4;
+}
+
+.google-small-logo .red {
+  color: #EA4335;
+}
+
+.google-small-logo .yellow {
+  color: #FBBC05;
+}
+
+.google-small-logo .green {
+  color: #34A853;
+}
+
+/* Navbar search box (smaller version of the main search) */
+.navbar-search {
+  flex-grow: 1;
+  max-width: 580px;
+  margin-right: 40px;
+}
+
+.navbar-search .search-box {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background-color: #f1f3f4;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  transition: all 0.2s ease;
+}
+
+.navbar-search .search-box:hover,
+.navbar-search .search-box:focus-within {
+  background-color: #fff;
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+  border-color: rgba(223, 225, 229, 0);
+}
+
+.navbar-search .search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 13px;
+}
+
+.navbar-search .search-input {
+  flex-grow: 1;
+  height: 100%;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  background-color: transparent;
+  font-family: 'Roboto', Arial, sans-serif;
+  color: #202124;
+  cursor: pointer;
+}
+
+.menu-icon {
+  display: none;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.nav-menu {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-item {
+  margin-left: 24px;
+}
+
+.nav-link {
+  color: #5f6368;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.2s;
+  padding: 8px 0;
+  position: relative;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: #202124;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 3px;
+  bottom: 0;
+  left: 0;
+  background-color: #1a73e8;
+  transition: width 0.2s;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+}
+
+.language-selector {
+  margin-right: 16px;
+}
+
+.language-selector select {
+  background-color: transparent;
+  color: #5f6368;
+  border: 1px solid #dadce0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.apps-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.apps-button:hover {
+  background-color: #f1f3f4;
+}
+
+/* Mobile Styles */
+@media screen and (max-width: 768px) {
+  .navbar-search {
+    display: none;
   }
   
   .menu-icon {
-    display: none;
-    cursor: pointer;
-    font-size: 1.5rem;
+    display: block;
   }
-  
+
   .nav-menu {
     display: flex;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  
-  .nav-item {
-    margin-left: var(--space-lg);
-  }
-  
-  .nav-link {
-    color: var(--neutral-200);
-    text-decoration: none;
-    font-weight: 600;
-    transition: color var(--transition-fast);
-    padding: var(--space-sm) 0;
-    position: relative;
-  }
-  
-  .nav-link:hover,
-  .nav-link.active {
-    color: white;
-  }
-  
-  .nav-link::after {
-    content: '';
+    flex-direction: column;
     position: absolute;
-    width: 0;
-    height: 2px;
-    bottom: 0;
+    top: 64px;
     left: 0;
-    background-color: white;
-    transition: width var(--transition-fast);
-  }
-  
-  .nav-link:hover::after,
-  .nav-link.active::after {
     width: 100%;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(32, 33, 36, 0.28);
+    padding: 16px 0;
+    transform: translateY(-100%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: -1;
   }
-  
+
+  .nav-menu.active {
+    transform: translateY(0);
+    opacity: 1;
+    z-index: 999;
+  }
+
+  .nav-item {
+    margin: 0;
+    text-align: center;
+  }
+
+  .nav-link {
+    display: block;
+    padding: 16px;
+  }
+
   .language-selector {
-    margin-left: var(--space-lg);
+    margin-left: auto;
+    margin-right: 16px;
   }
-  
-  .language-selector select {
-    background-color: var(--primary-color);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.25rem var(--space-sm);
-    border-radius: var(--border-radius-sm);
-    font-size: 0.875rem;
-  }
-  
-  /* Mobile Styles */
-  @media screen and (max-width: 768px) {
-    .menu-icon {
-      display: block;
-    }
-  
-    .nav-menu {
-      display: flex;
-      flex-direction: column;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: 100%;
-      background-color: var(--primary-dark);
-      box-shadow: var(--shadow-md);
-      padding: 1rem 0;
-      transform: translateY(-100%);
-      opacity: 0;
-      transition: transform var(--transition-medium), opacity var(--transition-medium);
-      z-index: -1;
-    }
-  
-    .nav-menu.active {
-      transform: translateY(0);
-      opacity: 1;
-      z-index: 999;
-    }
-  
-    .nav-item {
-      margin: 0;
-      text-align: center;
-    }
-  
-    .nav-link {
-      display: block;
-      padding: var(--space-md);
-    }
-  
-    .language-selector {
-      margin-left: var(--space-md);
-    }
-  }
+}

@@ -1,7 +1,7 @@
-/* App.css - Global styles for Medical Resource Finder */
+/* App.css - Google-inspired styles for Medical Resource Finder */
 
-/* Import fonts (consider using Google Fonts) */
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Montserrat:wght@500;700&display=swap');
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap');
 
 /* CSS Reset */
 * {
@@ -11,33 +11,39 @@
 }
 
 :root {
-  /* Color variables */
-  --primary-color: #2b7a9b; /* Primary blue */
-  --primary-light: #e1f5fe;
-  --primary-dark: #1c5d7d;
+  /* Google's color palette */
+  --google-blue: #4285F4;
+  --google-red: #EA4335;
+  --google-yellow: #FBBC05;
+  --google-green: #34A853;
   
-  --secondary-color: #4caf50; /* Secondary green */
-  --secondary-light: #e8f5e9;
-  --secondary-dark: #2e7d32;
+  /* Application color variables */
+  --primary-color: var(--google-blue);
+  --primary-light: #E8F0FE;
+  --primary-dark: #1A73E8;
+  
+  --secondary-color: var(--google-green);
+  --secondary-light: #E6F4EA;
+  --secondary-dark: #0F9D58;
   
   --neutral-100: #ffffff;
   --neutral-200: #f8f9fa;
   --neutral-300: #e9ecef;
-  --neutral-400: #dee2e6;
-  --neutral-500: #adb5bd;
-  --neutral-600: #6c757d;
-  --neutral-700: #495057;
-  --neutral-800: #343a40;
-  --neutral-900: #212529;
+  --neutral-400: #dadce0;
+  --neutral-500: #9aa0a6;
+  --neutral-600: #70757a;
+  --neutral-700: #5f6368;
+  --neutral-800: #3c4043;
+  --neutral-900: #202124;
   
-  --success: #28a745;
-  --warning: #ffc107;
-  --danger: #dc3545;
-  --info: #17a2b8;
+  --success: var(--google-green);
+  --warning: var(--google-yellow);
+  --danger: var(--google-red);
+  --info: var(--google-blue);
   
   /* Typography */
-  --font-family-base: 'Open Sans', sans-serif;
-  --font-family-heading: 'Montserrat', sans-serif;
+  --font-family-base: 'Roboto', sans-serif;
+  --font-family-heading: 'Product Sans', 'Roboto', sans-serif;
   
   /* Spacing */
   --space-xs: 0.25rem;
@@ -47,17 +53,17 @@
   --space-xl: 2rem;
   --space-2xl: 3rem;
   
-  /* Border radius */
+  /* Border radius - Google uses more generous radius */
   --border-radius-sm: 4px;
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
-  --border-radius-xl: 16px;
+  --border-radius-xl: 24px;
   --border-radius-round: 50%;
   
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  --shadow-md: 0 2px 6px rgba(60, 64, 67, 0.3), 0 1px 2px rgba(60, 64, 67, 0.15);
+  --shadow-lg: 0 4px 8px rgba(60, 64, 67, 0.3), 0 1px 3px rgba(60, 64, 67, 0.15);
   
   /* Transitions */
   --transition-fast: 0.2s ease;
@@ -76,26 +82,29 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-heading);
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.3;
   margin-bottom: var(--space-md);
   color: var(--neutral-900);
 }
 
 h1 {
-  font-size: 2.25rem;
+  font-size: 2rem;
+  letter-spacing: -0.5px;
 }
 
 h2 {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
+  letter-spacing: -0.25px;
 }
 
 h3 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
 p {
   margin-bottom: var(--space-md);
+  color: var(--neutral-700);
 }
 
 a {
@@ -137,21 +146,23 @@ main {
   padding: var(--space-xl) 0;
 }
 
-/* Button styles */
+/* Button styles - Google-inspired */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.25rem;
   border-radius: var(--border-radius-md);
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 0.875rem;
   text-align: center;
   cursor: pointer;
   transition: all var(--transition-fast);
-  border: none;
-  font-size: 1rem;
-  line-height: 1.5;
-  text-decoration: none;
+  border: 1px solid transparent;
+  text-transform: none;
+  letter-spacing: 0.25px;
+  height: 36px;
+  line-height: 20px;
 }
 
 .btn i {
@@ -161,11 +172,13 @@ main {
 .btn-primary {
   background-color: var(--primary-color);
   color: white;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
 }
 
 .btn-primary:hover, .btn-primary:focus {
   background-color: var(--primary-dark);
   color: white;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.4);
   text-decoration: none;
 }
 
@@ -182,19 +195,21 @@ main {
 
 .btn-outline {
   background-color: transparent;
-  border: 2px solid var(--primary-color);
-  color: var(--primary-color);
+  border: 1px solid var(--neutral-400);
+  color: var(--neutral-700);
 }
 
 .btn-outline:hover, .btn-outline:focus {
-  background-color: var(--primary-light);
-  color: var(--primary-dark);
+  background-color: var(--neutral-200);
+  border-color: var(--neutral-500);
+  color: var(--neutral-800);
   text-decoration: none;
 }
 
 .btn-large {
   padding: 0.75rem 1.5rem;
-  font-size: 1.1rem;
+  font-size: 0.9375rem;
+  height: 44px;
 }
 
 .btn:disabled {
@@ -202,7 +217,7 @@ main {
   cursor: not-allowed;
 }
 
-/* Form styles */
+/* Form styles - Google-inspired */
 .form-group {
   margin-bottom: var(--space-lg);
 }
@@ -210,22 +225,25 @@ main {
 label {
   display: block;
   margin-bottom: var(--space-sm);
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--neutral-800);
 }
 
 input, select, textarea {
   width: 100%;
-  padding: var(--space-md);
+  padding: 0.75rem;
   border: 1px solid var(--neutral-400);
   border-radius: var(--border-radius-md);
   font-family: var(--font-family-base);
   font-size: 1rem;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  color: var(--neutral-800);
 }
 
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
 }
 
 /* Checkbox and radio styles */
@@ -244,6 +262,7 @@ input:focus, select:focus, textarea:focus {
 .checkbox-item input[type="radio"] {
   width: auto;
   margin-right: var(--space-sm);
+  accent-color: var(--primary-color);
 }
 
 .checkbox-item label {
@@ -251,12 +270,14 @@ input:focus, select:focus, textarea:focus {
   font-weight: normal;
 }
 
-/* Footer */
+/* Footer - Google-style */
 .footer {
-  background-color: var(--neutral-800);
-  color: var(--neutral-200);
-  padding: var(--space-2xl) 0;
+  background-color: var(--neutral-100);
+  color: var(--neutral-600);
+  padding: var(--space-lg) 0;
   margin-top: auto;
+  border-top: 1px solid var(--neutral-300);
+  font-size: 0.85rem;
 }
 
 /* Utility classes */
@@ -282,11 +303,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 .error-message {
-  background-color: var(--danger);
-  color: white;
+  background-color: #FDECEA;
+  color: var(--danger);
   padding: var(--space-md);
   border-radius: var(--border-radius-md);
   margin-bottom: var(--space-lg);
+  border-left: 4px solid var(--danger);
 }
 
 /* Responsive utilities */
@@ -296,11 +318,11 @@ input:focus, select:focus, textarea:focus {
   }
   
   h2 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
   }
   
   h3 {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
   }
   
   .btn {
