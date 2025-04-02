@@ -1,6 +1,7 @@
 // components/ResourceCard.js
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { FaMapMarkerAlt, FaPhone, FaClock, FaCheckCircle } from 'react-icons/fa';
 import '../styles/ResourceCard.css';
 
 const ResourceCard = ({ resource }) => {
@@ -44,20 +45,20 @@ const ResourceCard = ({ resource }) => {
       
       <div className="resource-details">
         <div className="address">
-          <i className="icon-location"></i>
+          <FaMapMarkerAlt className="detail-icon" />
           <p>{address_line1}<br />{city}, {state} {zip}</p>
         </div>
         
         {phone && (
           <div className="phone">
-            <i className="icon-phone"></i>
+            <FaPhone className="detail-icon" />
             <p>{phone}</p>
           </div>
         )}
         
         {hours && (
           <div className="hours">
-            <i className="icon-clock"></i>
+            <FaClock className="detail-icon" />
             <p>{hours}</p>
           </div>
         )}
@@ -65,13 +66,22 @@ const ResourceCard = ({ resource }) => {
       
       <div className="resource-features">
         {accepts_uninsured && (
-          <span className="feature">Accepts Uninsured</span>
+          <span className="feature">
+            <FaCheckCircle size={12} className="feature-icon" />
+            Accepts Uninsured
+          </span>
         )}
         {sliding_scale && (
-          <span className="feature">Sliding Scale Fees</span>
+          <span className="feature">
+            <FaCheckCircle size={12} className="feature-icon" />
+            Sliding Scale Fees
+          </span>
         )}
         {free_care_available && (
-          <span className="feature">Free Care Available</span>
+          <span className="feature">
+            <FaCheckCircle size={12} className="feature-icon" />
+            Free Care Available
+          </span>
         )}
       </div>
       

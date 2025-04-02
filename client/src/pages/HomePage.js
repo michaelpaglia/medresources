@@ -1,44 +1,97 @@
 // pages/HomePage.js
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import GoogleSearchBar from '../components/GoogleSearchBar';
+import { 
+  FaChevronLeft, 
+  FaChevronRight, 
+  FaChevronUp, 
+  FaChevronDown, 
+  FaQuestionCircle, 
+  FaHospital, 
+  FaPlus, 
+  FaMedkit
+} from 'react-icons/fa';
+import { 
+  FaTooth, 
+  FaPills 
+} from 'react-icons/fa';
+import { GiBrain } from 'react-icons/gi';
+import { BiSearch, BiCheckCircle, BiMap } from 'react-icons/bi';
 import '../styles/HomePage.css';
 
 const HomePage = () => {
+  // State for category carousel
+  const [categoryScroll, setCategoryScroll] = useState(0);
+  
+  // All available categories - using icons that actually exist in react-icons
+  const categories = [
+    { id: 1, name: 'Health Centers', icon: <FaMedkit size={24} />, link: '/search?type=1' },
+    { id: 3, name: 'Pharmacies', icon: <FaPills size={24} />, link: '/search?type=3' },
+    { id: 4, name: 'Dental Care', icon: <FaTooth size={24} />, link: '/search?type=4' },
+    { id: 5, name: 'Mental Health', icon: <GiBrain size={24} />, link: '/search?type=5' },
+    { id: 2, name: 'Hospitals', icon: <FaHospital size={24} />, link: '/search?type=2' }
+  ];
+  
+  // Set number of visible categories based on the visible design (4 items)
+  const visibleCount = 4;
+  
+  // Visible categories based on scroll position
+  const visibleCategories = categories.slice(categoryScroll, categoryScroll + visibleCount);
+  
+  // Handle previous scroll click
+  const handlePrevClick = () => {
+    if (categoryScroll > 0) {
+      setCategoryScroll(categoryScroll - 1);
+    }
+  };
+  
+  // Handle next scroll click
+  const handleNextClick = () => {
+    if (categoryScroll < categories.length - visibleCount) {
+      setCategoryScroll(categoryScroll + 1);
+    }
+  };
+
   return (
     <div className="home-page google-style">
       <section className="google-hero">
         <GoogleSearchBar />
         
         <div className="quick-links">
-          <div className="link-row">
-            <Link to="/search?type=1" className="quick-link">
-              <div className="quick-link-icon health-center">
-                <i className="icon-healthcare"></i>
-              </div>
-              <span>Health Centers</span>
-            </Link>
+          <div className="categories-container-wrapper">
+            <button 
+              className={`nav-arrow prev ${categoryScroll === 0 ? 'disabled' : ''}`} 
+              onClick={handlePrevClick}
+              disabled={categoryScroll === 0}
+            >
+              <FaChevronLeft size={20} />
+            </button>
             
-            <Link to="/search?type=3" className="quick-link">
-              <div className="quick-link-icon pharmacy">
-                <i className="icon-pharmacy"></i>
-              </div>
-              <span>Pharmacies</span>
-            </Link>
+            <div className="categories-section">
+              {visibleCategories.map((category, index) => (
+                <div key={category.id} className="category-column">
+                  <Link to={category.link} className="quick-link">
+                    <div className={`quick-link-icon ${category.name.toLowerCase().replace(' ', '-')}`}>
+                      {category.icon}
+                    </div>
+                    <span>{category.name}</span>
+                  </Link>
+                </div>
+              ))}
+            </div>
             
-            <Link to="/search?type=4" className="quick-link">
-              <div className="quick-link-icon dental">
-                <i className="icon-dental"></i>
-              </div>
-              <span>Dental Care</span>
-            </Link>
-            
-            <Link to="/search?type=5" className="quick-link">
-              <div className="quick-link-icon mental-health">
-                <i className="icon-mental-health"></i>
-              </div>
-              <span>Mental Health</span>
-            </Link>
+            <button 
+              className={`nav-arrow next ${categoryScroll >= categories.length - visibleCount ? 'disabled' : ''}`} 
+              onClick={handleNextClick}
+              disabled={categoryScroll >= categories.length - visibleCount}
+            >
+              <FaChevronRight size={20} />
+            </button>
+          </div>
+          
+          <div className="quick-link-help">
+            <FaQuestionCircle size={20} className="help-icon" />
           </div>
         </div>
       </section>
@@ -47,7 +100,7 @@ const HomePage = () => {
         <div className="feature-container">
           <div className="feature-card">
             <div className="feature-icon">
-              <i className="icon-search"></i>
+              <BiSearch size={24} />
             </div>
             <h2 className="feature-title">Find Healthcare Resources</h2>
             <p className="feature-description">
@@ -57,7 +110,7 @@ const HomePage = () => {
           
           <div className="feature-card">
             <div className="feature-icon">
-              <i className="icon-check"></i>
+              <BiCheckCircle size={24} />
             </div>
             <h2 className="feature-title">Check Eligibility</h2>
             <p className="feature-description">
@@ -68,7 +121,7 @@ const HomePage = () => {
           
           <div className="feature-card">
             <div className="feature-icon">
-              <i className="icon-map"></i>
+              <BiMap size={24} />
             </div>
             <h2 className="feature-title">Locate Nearby Services</h2>
             <p className="feature-description">

@@ -1,5 +1,6 @@
 // components/ResourceFilter.js
 import React, { useState } from 'react';
+import { FaSearch, FaChevronDown, FaChevronUp, FaFilter } from 'react-icons/fa';
 import '../styles/ResourceFilter.css';
 
 const ResourceFilter = ({ filters, onFilterChange }) => {
@@ -38,19 +39,24 @@ const ResourceFilter = ({ filters, onFilterChange }) => {
   return (
     <div className="resource-filter">
       <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search by keyword (e.g., dental, insulin, transportation)"
-          value={filters.searchTerm}
-          onChange={handleSearchChange}
-          className="search-input"
-        />
+        <div className="search-input-container">
+          <FaSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search by keyword (e.g., dental, insulin, transportation)"
+            value={filters.searchTerm}
+            onChange={handleSearchChange}
+            className="search-input"
+          />
+        </div>
       </div>
 
       <div className={`filter-options ${isExpanded ? 'expanded' : ''}`}>
         <div className="filter-row">
           <div className="filter-group">
-            <label htmlFor="resourceType">Resource Type:</label>
+            <label htmlFor="resourceType">
+              <FaFilter className="filter-icon" /> Resource Type:
+            </label>
             <select
               id="resourceType"
               value={filters.resourceType}
@@ -102,7 +108,11 @@ const ResourceFilter = ({ filters, onFilterChange }) => {
       </div>
       
       <button className="expand-button" onClick={toggleExpand}>
-        {isExpanded ? 'Show Less Filters' : 'Show More Filters'}
+        {isExpanded ? (
+          <>Less Filters <FaChevronUp className="expand-icon" /></>
+        ) : (
+          <>More Filters <FaChevronDown className="expand-icon" /></>
+        )}
       </button>
     </div>
   );

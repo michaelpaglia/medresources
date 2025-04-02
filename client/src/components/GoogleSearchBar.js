@@ -1,6 +1,8 @@
 // components/GoogleSearchBar.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FaSearch } from 'react-icons/fa';
+import { FiX } from 'react-icons/fi';
 import '../styles/GoogleSearchBar.css';
 
 const GoogleSearchBar = () => {
@@ -61,9 +63,7 @@ const GoogleSearchBar = () => {
         <form onSubmit={handleSearchSubmit}>
           <div className="search-box">
             <div className="search-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                <path fill="#9aa0a6" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
-              </svg>
+              <FaSearch size={20} color="#9aa0a6" />
             </div>
             <input
               type="text"
@@ -79,9 +79,7 @@ const GoogleSearchBar = () => {
                 onClick={() => setSearchTerm('')}
                 title="Clear search"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                  <path fill="#70757a" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>
-                </svg>
+                <FiX size={20} color="#70757a" />
               </div>
             )}
           </div>

@@ -1,17 +1,19 @@
 // components/MapView.js
 import React, { useEffect, useRef } from 'react';
-import '../styles/MapView.css';
-
-// This example uses Leaflet.js for maps
-// You would need to install:
-// npm install leaflet react-leaflet
-
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import { 
+  FaMapMarkerAlt, 
+  FaHospital, 
+  FaMedkit, 
+  FaPills, 
+  FaTooth, 
+  FaBrain 
+} from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
+import '../styles/MapView.css';
 
 // Fix for marker icons in React
-// See: https://github.com/PaulLeCam/react-leaflet/issues/453
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -24,13 +26,49 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Resource type icons (you would need to add these to your project)
+// Create custom icon for each resource type
+const createCustomIcon = (IconComponent, color) => {
+  // Create an HTML element with the React icon
+  const customIcon = L.divIcon({
+    className: 'custom-map-icon',
+    html: `<div style="color: ${color}; background-color: white; border-radius: 50%; padding: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              ${getIconPath(IconComponent.name)}
+            </svg>
+          </div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+  });
+  return customIcon;
+};
+
+// Helper function to get SVG path based on icon name
+function getIconPath(iconName) {
+  switch (iconName) {
+    case 'FaHospital':
+      return '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z" />';
+    case 'FaMedkit':
+      return '<path d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm6 11h-3v3h-2v-3H8v-2h3V10h2v3h3v2z" />';
+    case 'FaPills':
+      return '<path d="M6 3h12v2H6zm7 11v-6h5v6c0 3.31-2.69 6-6 6s-6-2.69-6-6v-6h5v6c0 .55.45 1 1 1s1-.45 1-1z" />';
+    case 'FaTooth':
+      return '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 16c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-4c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-4c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />';
+    case 'FaBrain':
+      return '<path d="M21 12.22C21 6.73 16.74 3 12 3c-4.69 0-9 3.65-9 9.28-.6.07-.11.14-.11.22l.05.02C3.44 15.83 5.17 18 7.5 18c1.33 0 2.5-.62 3.5-1.61C12 17.38 13.17 18 14.5 18c2.33 0 4.06-2.17 4.56-5.48l.05-.02c-.01-.08-.11-.15-.11-.28zM10.24 16.2c-.78.85-1.76 1.3-2.74 1.3-1.95 0-3.5-1.96-3.5-4.5 0-2.06 1.16-3.8 2.74-4.59.03 1.62.41 3.12 1.08 4.45.11.22.24.43.37.64.13.21.26.42.41.61.08.1.16.21.24.31.1.11.2.21.31.32.38.38.81.7 1.09.94zM14.5 17.5c-.98 0-1.96-.45-2.74-1.3.28-.24.71-.56 1.09-.94.11-.11.21-.21.31-.32.09-.1.17-.21.25-.31.14-.19.28-.4.4-.61.13-.21.26-.42.37-.64.67-1.33 1.05-2.83 1.08-4.45 1.58.79 2.74 2.53 2.74 4.59 0 2.54-1.55 4.5-3.5 4.5z" />';
+    default:
+      return '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />';
+  }
+}
+
+// Resource type icons map
 const resourceTypeIcons = {
-  1: L.icon({ iconUrl: '/icons/health-center.png', iconSize: [32, 32] }),
-  2: L.icon({ iconUrl: '/icons/hospital.png', iconSize: [32, 32] }),
-  3: L.icon({ iconUrl: '/icons/pharmacy.png', iconSize: [32, 32] }),
-  6: L.icon({ iconUrl: '/icons/transportation.png', iconSize: [32, 32] }),
-  // Add more icons for other resource types
+  1: createCustomIcon(FaMedkit, '#4285F4'),         // Health Center 
+  2: createCustomIcon(FaHospital, '#EA4335'),       // Hospital
+  3: createCustomIcon(FaPills, '#34A853'),          // Pharmacy
+  4: createCustomIcon(FaTooth, '#FBBC05'),          // Dental Clinic
+  5: createCustomIcon(FaBrain, '#DB4437'),          // Mental Health
+  6: createCustomIcon(FaMapMarkerAlt, '#4285F4')    // Default/Transportation
 };
 
 const MapView = ({ resources }) => {
@@ -91,7 +129,7 @@ const MapView = ({ resources }) => {
             return null;
           }
           
-          const icon = resourceTypeIcons[resource.resource_type_id] || DefaultIcon;
+          const icon = resourceTypeIcons[resource.resource_type_id] || resourceTypeIcons[6];
           
           return (
             <Marker 

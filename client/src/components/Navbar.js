@@ -1,6 +1,8 @@
 // components/Navbar.js - Google Style
 import React, { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
+import { FiMenu, FiX, FiGrid } from 'react-icons/fi';
+import { FaSearch } from 'react-icons/fa';
 import '../styles/Navbar.css';
 
 const Navbar = () => {
@@ -37,9 +39,7 @@ const Navbar = () => {
         <div className="navbar-search">
           <div className="search-box">
             <div className="search-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                <path fill="#9aa0a6" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
-              </svg>
+              <FaSearch size={16} color="#9aa0a6" />
             </div>
             <input
               type="text"
@@ -55,13 +55,7 @@ const Navbar = () => {
         </div>
 
         <div className="menu-icon" onClick={toggleMenu}>
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            {isMenuOpen ? (
-              <path fill="#5f6368" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>
-            ) : (
-              <path fill="#5f6368" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path>
-            )}
-          </svg>
+          {isMenuOpen ? <FiX size={24} color="#5f6368" /> : <FiMenu size={24} color="#5f6368" />}
         </div>
 
         <ul className={isMenuOpen ? 'nav-menu active' : 'nav-menu'}>
@@ -102,11 +96,9 @@ const Navbar = () => {
             </select>
           </div>
           
-          <a href="https://google.com" className="apps-button" title="Google apps">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <path fill="#5f6368" d="M6,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM16,6c0,1.1 0.9,2 2,2s2,-0.9 2,-2 -0.9,-2 -2,-2 -2,0.9 -2,2zM12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2z"></path>
-            </svg>
-          </a>
+          <div className="apps-button" title="Apps">
+            <FiGrid size={24} color="#5f6368" />
+          </div>
         </div>
       </div>
     </nav>
