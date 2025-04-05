@@ -1,10 +1,12 @@
-// src/App.js
+// client/src/App.js
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
+// Import the improved pages instead of the old ones
 import ResourceSearchPage from './pages/ResourceSearchPage';
-import ResourceDetailPage from './pages/ResourceDetailPage';
+import ImprovedResourceDetailPage from './pages/ImprovedResourceDetailPage'; // New component
 import EligibilityScreener from './pages/EligibilityScreener';
 import AboutPage from './pages/AboutPage';
 import AdminDataLoader from './pages/AdminDataLoader';
@@ -19,7 +21,8 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/search" element={<ResourceSearchPage />} />
-            <Route path="/resource/:id" element={<ResourceDetailPage />} />
+            {/* Use the improved detail page */}
+            <Route path="/resource/:id" element={<ImprovedResourceDetailPage />} />
             <Route path="/eligibility" element={<EligibilityScreener />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/admin/data-loader" element={<AdminDataLoader />} />
