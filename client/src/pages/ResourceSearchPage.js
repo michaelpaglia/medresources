@@ -1,5 +1,4 @@
-// src/pages/ResourceSearchPage.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   FaSearch, 
@@ -9,7 +8,6 @@ import {
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
 import MapView from '../components/MapView';
 import '../styles/ImprovedResourceSearchPage.css';
-
 
 const ResourceSearchPage = () => {
   const location = useLocation();
@@ -47,17 +45,27 @@ const ResourceSearchPage = () => {
     { id: '10', name: 'Urgent Care' }
   ];
 
-  // Parse query parameters and fetch initial data
-
-
   // Function to clear URL parameters while keeping the current path
-  const clearUrlParams = () => {
+  const clearUrlParams = useCallback(() => {
     navigate('/search', { replace: true });
-  };
+  }, [navigate]);
+
+  // Clean up AI mentions from resource data
+  const cleanResourceData = useCallback((data) => {
+    return data.map(resource => {
+      if (resource.notes) {
+        resource.notes = resource.notes
+          .replace(/\s?\(Data enriched via AI.*?\)/g, '')
+          .replace(/\s?\(Data enrichment failed\)/g, '');
+      }
+      return resource;
+    });
+  }, []);
 
   // Fetch resources from API
   const fetchResources = useCallback((query = '', type = '') => {
     setIsLoading(true);
+    setError(null);
     
     // Build the API URL with query parameters
     let url = '/api/resources';
@@ -76,15 +84,7 @@ const ResourceSearchPage = () => {
         return response.json();
       })
       .then(data => {
-        // Clean up any AI analysis mentions from the notes
-        const cleanedData = data.map(resource => {
-          if (resource.notes) {
-            resource.notes = resource.notes
-              .replace(/\s?\(Data enriched via AI.*?\)/g, '')
-              .replace(/\s?\(Data enrichment failed\)/g, '');
-          }
-          return resource;
-        });
+        const cleanedData = cleanResourceData(data);
         
         setResources(cleanedData);
         setFilteredResources(cleanedData);
@@ -98,7 +98,7 @@ const ResourceSearchPage = () => {
         setError('Failed to load resources. Please try again later.');
         setIsLoading(false);
       });
-  }, [clearUrlParams, navigate]); // Add clearUrlParams as dependency);
+  }, [clearUrlParams, cleanResourceData]);
 
   // Handle text search
   const handleSearchSubmit = (e) => {
@@ -119,21 +119,15 @@ const ResourceSearchPage = () => {
     if (!zipCode) return;
     
     setIsLoading(true);
+    setError(null);
+    
     fetch(`/api/resources/location?zipCode=${zipCode}&radius=${radius}`)
       .then(response => {
         if (!response.ok) throw new Error('Failed to fetch resources for this location');
         return response.json();
       })
       .then(data => {
-        // Clean up any AI analysis mentions
-        const cleanedData = data.map(resource => {
-          if (resource.notes) {
-            resource.notes = resource.notes
-              .replace(/\s?\(Data enriched via AI.*?\)/g, '')
-              .replace(/\s?\(Data enrichment failed\)/g, '');
-          }
-          return resource;
-        });
+        const cleanedData = cleanResourceData(data);
         
         setResources(cleanedData);
         setFilteredResources(cleanedData);
@@ -150,7 +144,7 @@ const ResourceSearchPage = () => {
   };
 
   // Apply filters to resources
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     const filtered = resources.filter(resource => {
       // Resource type filter
       if (filters.resourceType && resource.resource_type_id?.toString() !== filters.resourceType) {
@@ -176,22 +170,27 @@ const ResourceSearchPage = () => {
     });
     
     setFilteredResources(filtered);
-  };
+  }, [resources, filters]);
 
   // Handle filter changes
   const handleFilterChange = (field, value) => {
-    setFilters(prev => {
-      const newFilters = { ...prev, [field]: value };
-      return newFilters;
-    });
+    setFilters(prev => ({ ...prev, [field]: value }));
   };
 
-  useEffect(() => {
+  // Memoize the initial fetch logic to prevent unnecessary re-renders
+  const initialFetchParams = useMemo(() => {
     const searchParams = new URLSearchParams(location.search);
-    const queryParam = searchParams.get('query') || '';
-    const typeParam = searchParams.get('type') || '';
+    return {
+      queryParam: searchParams.get('query') || '',
+      typeParam: searchParams.get('type') || ''
+    };
+  }, [location.search]);
+
+  // Initial data fetch effect
+  useEffect(() => {
+    const { queryParam, typeParam } = initialFetchParams;
     
-    // Clear the URL parameters after reading them
+    // Set initial search term and type filter if params exist
     if (queryParam || typeParam) {
       setSearchTerm(queryParam);
       setFilters(prev => ({
@@ -205,11 +204,12 @@ const ResourceSearchPage = () => {
       // If no parameters, fetch all resources
       fetchResources();
     }
-  }, [location.search, fetchResources]);
+  }, [initialFetchParams, fetchResources]);
 
+  // Filters effect
   useEffect(() => {
     applyFilters();
-  }, [filters, resources]);
+  }, [filters, resources, applyFilters]);
   
   return (
     <div className="improved-search-page">
