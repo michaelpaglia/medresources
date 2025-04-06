@@ -23,6 +23,7 @@
         "leaflet": "^1.9.4",
         "morgan": "^1.10.0",
         "pg": "^8.14.1",
+        "react-google-places-autocomplete": "^4.1.0",
         "winston": "^3.17.0"
     },
     "devDependencies": {

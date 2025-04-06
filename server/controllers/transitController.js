@@ -1,4 +1,6 @@
+// server/controllers/transitController.js
 const path = require('path');
+const axios = require('axios');
 const geocodingService = require('../services/geocodingService');
 const GTFSService = require('../services/gtfsService');
 
@@ -6,6 +8,28 @@ const GTFSService = require('../services/gtfsService');
 const gtfsPath = path.join(__dirname, '../cdta');
 console.log('Loading GTFS data from:', gtfsPath);
 const gtfsService = new GTFSService(gtfsPath);
+
+// Get realistic route geometry between two points
+async function getRouteGeometry(startLat, startLon, endLat, endLon) {
+  try {
+    // Use OpenStreetMap's OSRM service for realistic routes
+    const response = await axios.get(
+      `https://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=geojson`
+    );
+    
+    if (response.data.routes && response.data.routes.length > 0) {
+      // Convert coordinates from [lon, lat] to [lat, lon] for Leaflet
+      return response.data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    }
+    
+    // Fallback to straight line if routing fails
+    return [[startLat, startLon], [endLat, endLon]];
+  } catch (error) {
+    console.error('Error fetching route geometry:', error);
+    // Fallback to straight line
+    return [[startLat, startLon], [endLat, endLon]];
+  }
+}
 
 async function findTransitRoutes(req, res) {
   try {
@@ -60,22 +84,36 @@ async function findTransitRoutes(req, res) {
     const transitOptions = await Promise.race([searchPromise, timeoutPromise]);
     console.log(`Found ${transitOptions.length} transit options`);
 
-    const formattedOptions = transitOptions.map(option => ({
-      routeName: option.route.route_long_name || option.route.route_short_name,
-      routeId: option.route.route_id,
-      routeUrl: option.route.route_url,
-      startStopName: option.startStop.stop_name,
-      endStopName: option.endStop.stop_name,
-      walkToStartStop: option.startDistance.toFixed(2),
-      walkFromEndStop: option.endDistance.toFixed(2),
-      // Add these coordinates for map visualization
-      startStopLat: option.startStop.stop_lat,
-      startStopLon: option.startStop.stop_lon,
-      endStopLat: option.endStop.stop_lat,
-      endStopLon: option.endStop.stop_lon
+    // Process each transit option to add realistic routes
+    const enhancedTransitOptions = await Promise.all(transitOptions.map(async option => {
+      // Get realistic route path
+      const routePath = await getRouteGeometry(
+        option.startStop.stop_lat, 
+        option.startStop.stop_lon,
+        option.endStop.stop_lat,
+        option.endStop.stop_lon
+      );
+      
+      return {
+        routeName: option.route.route_long_name || option.route.route_short_name,
+        routeId: option.route.route_id,
+        routeUrl: option.route.route_url,
+        startStopName: option.startStop.stop_name,
+        endStopName: option.endStop.stop_name,
+        walkToStartStop: option.startDistance.toFixed(2),
+        walkFromEndStop: option.endDistance.toFixed(2),
+        startStopLat: option.startStop.stop_lat,
+        startStopLon: option.startStop.stop_lon,
+        endStopLat: option.endStop.stop_lat,
+        endStopLon: option.endStop.stop_lon,
+        // Add the realistic route path
+        path: routePath,
+        // Add estimated time based on distance
+        estimatedTime: Math.round((option.startDistance + option.endDistance) * 15) // rough estimate
+      };
     }));
 
-    res.json(formattedOptions);
+    res.json(enhancedTransitOptions);
   } catch (error) {
     console.error('Error finding transit routes:', error);
     res.status(500).json({
@@ -84,6 +122,7 @@ async function findTransitRoutes(req, res) {
     });
   }
 }
+
 async function findTransitRoutesByCoords(req, res) {
   try {
     const { startLat, startLon, endLat, endLon } = req.query;
@@ -109,26 +148,43 @@ async function findTransitRoutesByCoords(req, res) {
 
     console.log(`Found ${transitOptions.length} transit options`);
 
-    const formattedOptions = transitOptions.map(option => ({
-      routeName: option.route.route_long_name || option.route.route_short_name,
-      routeId: option.route.route_id,
-      routeUrl: option.route.route_url,
-      startStopName: option.startStop.stop_name,
-      endStopName: option.endStop.stop_name,
-      walkToStartStop: option.startDistance.toFixed(2),
-      walkFromEndStop: option.endDistance.toFixed(2),
-      startStopLat: option.startStop.stop_lat,
-      startStopLon: option.startStop.stop_lon,
-      endStopLat: option.endStop.stop_lat,
-      endStopLon: option.endStop.stop_lon
+    // Process each transit option to add realistic routes
+    const enhancedTransitOptions = await Promise.all(transitOptions.map(async option => {
+      // Get realistic route path
+      const routePath = await getRouteGeometry(
+        option.startStop.stop_lat, 
+        option.startStop.stop_lon,
+        option.endStop.stop_lat,
+        option.endStop.stop_lon
+      );
+      
+      return {
+        routeName: option.route.route_long_name || option.route.route_short_name,
+        routeId: option.route.route_id,
+        routeUrl: option.route.route_url,
+        startStopName: option.startStop.stop_name,
+        endStopName: option.endStop.stop_name,
+        walkToStartStop: option.startDistance.toFixed(2),
+        walkFromEndStop: option.endDistance.toFixed(2),
+        startStopLat: option.startStop.stop_lat,
+        startStopLon: option.startStop.stop_lon,
+        endStopLat: option.endStop.stop_lat,
+        endStopLon: option.endStop.stop_lon,
+        // Add the realistic route path
+        path: routePath,
+        // Add estimated time based on distance
+        estimatedTime: Math.round((option.startDistance + option.endDistance) * 15) // rough estimate
+      };
     }));
 
-    res.json(formattedOptions);
+    res.json(enhancedTransitOptions);
   } catch (err) {
     console.error('Error in findTransitRoutesByCoords:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 }
+
 module.exports = {
-  findTransitRoutes, findTransitRoutesByCoords
+  findTransitRoutes, 
+  findTransitRoutesByCoords
 };

@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FaBus, 
   FaMapMarkerAlt, 
-  FaWalking 
+  FaWalking,
+  FaClock 
 } from 'react-icons/fa';
-import MapView from './MapView'; // Make sure this file exists and supports props used below
 import '../styles/TransitRoutes.css';
 
-const TransitRoutesTab = ({ resource }) => {
+const TransitRoutesTab = ({ resource, onRoutesFound }) => {
   const [startAddress, setStartAddress] = useState('');
   const [transitRoutes, setTransitRoutes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -15,6 +15,58 @@ const TransitRoutesTab = ({ resource }) => {
   const [debugInfo, setDebugInfo] = useState(null);
 
   const SEARCH_TIMEOUT = 10000;
+  
+  // Listen for geolocation
+  useEffect(() => {
+    // Try to get the user's current location when the component mounts
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // Get address from coordinates using reverse geocoding
+          reverseGeocode(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.log('Geolocation error:', error);
+          // Don't set an error, just let the user enter their address
+        }
+      );
+    }
+  }, []);
+  
+  // Update parent component when transit routes change
+  useEffect(() => {
+    if (onRoutesFound && transitRoutes.length > 0) {
+      // Prepare routes with path data
+      const preparedRoutes = transitRoutes.map(route => ({
+        ...route,
+        startLat: route.startStopLat || resource.latitude,
+        startLon: route.startStopLon || resource.longitude,
+        endLat: route.endStopLat || resource.latitude,
+        endLon: route.endStopLon || resource.longitude
+      }));
+      
+      // Send routes to parent component
+      onRoutesFound(preparedRoutes);
+    }
+  }, [transitRoutes, resource, onRoutesFound]);
+  
+  // Reverse geocoding function
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+        { headers: { 'User-Agent': 'MedicalResourceFinder/1.0' } }
+      );
+      const data = await response.json();
+      
+      if (data && data.display_name) {
+        // Set the address from reverse geocoding
+        setStartAddress(data.display_name);
+      }
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+    }
+  };
 
   const handleTransitSearch = async (e) => {
     e.preventDefault();
@@ -26,7 +78,10 @@ const TransitRoutesTab = ({ resource }) => {
     const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
 
     try {
+      // Use the text address
       let searchAddress = startAddress;
+      
+      // Add Troy, NY to the address if it doesn't already include it
       if (!searchAddress.toLowerCase().includes('troy') && !searchAddress.toLowerCase().includes('ny')) {
         searchAddress += ', Troy, NY';
       }
@@ -64,24 +119,18 @@ const TransitRoutesTab = ({ resource }) => {
       setIsLoading(false);
     }
   };
-  const prepareRoutesForMap = () => {
-    return transitRoutes.map(route => ({
-      ...route,
-      stops: route.stops || [
-        { latitude: resource.latitude, longitude: resource.longitude } // fallback
-      ]
-    }));
-  };
   
-  const preparedRoutes = useMemo(() => {
-    return transitRoutes.map(route => ({
-      ...route,
-      startLat: route.startStopLat || resource.latitude,
-      startLon: route.startStopLon || resource.longitude,
-      endLat: route.endStopLat || resource.latitude,
-      endLon: route.endStopLon || resource.longitude
-    }));
-  }, [transitRoutes, resource]);
+  // Format minutes to human-readable time
+  const formatTime = (minutes) => {
+    if (!minutes) return '';
+    if (minutes < 60) {
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return `${hours} hr ${remainingMinutes} min`;
+    }
+  };
 
   return (
     <div className="transit-routes-container">
@@ -90,18 +139,22 @@ const TransitRoutesTab = ({ resource }) => {
       </p>
 
       <form onSubmit={handleTransitSearch} className="transit-search-form">
-        <div className="input-group">
+        <div className="input-container">
           <label htmlFor="start-address" className="sr-only">Starting Address</label>
-          <FaMapMarkerAlt className="input-icon" />
-          <input
-            id="start-address"
-            type="text"
-            value={startAddress}
-            onChange={(e) => setStartAddress(e.target.value)}
-            placeholder="Enter your starting address (e.g., 144 River St, Troy, NY)"
-            required
-          />
+          <div className="input-group">
+            <FaMapMarkerAlt className="input-icon" />
+            <input
+              id="start-address"
+              type="text"
+              value={startAddress}
+              onChange={(e) => setStartAddress(e.target.value)}
+              placeholder="Enter your starting address (e.g., 144 River St, Troy, NY)"
+              autoComplete="off"
+              required
+            />
+          </div>
         </div>
+        
         <button type="submit" disabled={isLoading}>
           {isLoading ? 'Searching...' : 'Find Transit Routes'}
         </button>
@@ -127,53 +180,61 @@ const TransitRoutesTab = ({ resource }) => {
         </div>
       )}
 
+      {/* Just show route list, no map needed here */}
       {transitRoutes.length > 0 && (
-        <>
-          <div className="transit-map-container">
-            <h3>Transit Routes Map</h3>
-            <MapView 
-              resources={[resource]} 
-              transitRoutes={preparedRoutes} 
-            />
-          </div>
-
-          <div className="transit-routes-list">
-            <h3>Available Transit Routes</h3>
-            {transitRoutes.map((route, index) => (
-              <div key={index} className="transit-route-card">
-                <div className="route-header">
-                  <FaBus className="route-icon" />
-                  <h4>{route.routeName}</h4>
-                </div>
-                <div className="route-details">
-                  <div className="route-stop">
-                    <FaWalking className="walk-icon" />
-                    <span>Walk {route.walkToStartStop} miles to start stop: {route.startStopName}</span>
+        <div className="transit-routes-list">
+          <h3>Available Transit Routes</h3>
+          {transitRoutes.map((route, index) => (
+            <div key={index} className="transit-route-card">
+              <div className="route-header">
+                <FaBus className="route-icon" />
+                <h4>{route.routeName}</h4>
+                {route.estimatedTime && (
+                  <div className="route-time">
+                    <FaClock className="time-icon" />
+                    <span>Est. {formatTime(route.estimatedTime)}</span>
                   </div>
-                  <div className="route-stop">
-                    <FaWalking className="walk-icon" />
-                    <span>Walk {route.walkFromEndStop} miles from end stop: {route.endStopName}</span>
-                  </div>
-                  {route.routeUrl && (
-                    <a 
-                      href={route.routeUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="route-details-link"
-                    >
-                      View Route Details
-                    </a>
-                  )}
-                </div>
+                )}
               </div>
-            ))}
-          </div>
-        </>
+              <div className="route-details">
+                <div className="route-stop">
+                  <FaWalking className="walk-icon" />
+                  <span>Walk {route.walkToStartStop} miles to bus stop: <strong>{route.startStopName}</strong></span>
+                </div>
+                <div className="route-stop">
+                  <FaBus className="bus-icon" />
+                  <span>Take <strong>{route.routeName}</strong> bus</span>
+                </div>
+                <div className="route-stop">
+                  <FaWalking className="walk-icon" />
+                  <span>Walk {route.walkFromEndStop} miles from bus stop: <strong>{route.endStopName}</strong></span>
+                </div>
+                {route.routeUrl && (
+                  <a 
+                    href={route.routeUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="route-details-link"
+                  >
+                    View Route Schedule
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {transitRoutes.length === 0 && !isLoading && !error && !debugInfo && (
         <div className="no-routes-message">
-          <p>Enter your starting address to find transit routes to this location.</p>
+          <h3>No Transit Routes Found Yet</h3>
+          <p>Enter your starting address above to find available bus routes to this location.</p>
+          <p>You can also try these options:</p>
+          <ul>
+            <li>Include your street number and name (e.g., "144 River St")</li>
+            <li>Add your city and state (e.g., "Troy, NY")</li>
+            <li>Try a nearby major intersection or landmark</li>
+          </ul>
         </div>
       )}
     </div>

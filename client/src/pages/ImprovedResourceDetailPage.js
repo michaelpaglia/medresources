@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   FaMapMarkerAlt, 
   FaPhone, 
@@ -21,6 +21,7 @@ const ImprovedResourceDetailPage = () => {
   const [resource, setResource] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [transitRoutes, setTransitRoutes] = useState([]);
 
   // Resource type mapping
   const resourceTypes = {
@@ -58,6 +59,11 @@ const ImprovedResourceDetailPage = () => {
 
     fetchResourceDetails();
   }, [id]);
+
+  // Handle transit routes from child component
+  const handleTransitRoutesFound = (routes) => {
+    setTransitRoutes(routes);
+  };
 
   // Format phone number
   const formatPhone = (phoneNumber) => {
@@ -108,7 +114,8 @@ const ImprovedResourceDetailPage = () => {
       </div>
     );
   }
-    // No resource found
+
+  // No resource found
   if (!resource) {
     return (
       <div className="detail-not-found">
@@ -129,6 +136,10 @@ const ImprovedResourceDetailPage = () => {
 
   return (
     <div className="resource-detail-page">
+      <Link to="/search" className="back-link">
+        <FaArrowLeft /> Back to Search Results
+      </Link>
+      
       <div className="detail-container">
         <div className="detail-header">
           <h1>{resource.name}</h1>
@@ -145,31 +156,61 @@ const ImprovedResourceDetailPage = () => {
 
         <div className="detail-content">
           <div className="detail-two-columns">
-            <div className="location-details">
-              <div className="detail-section">
-                <h2>Contact Information</h2>
-                {resource.address_line1 && (
-                  <div className="detail-item">
-                    <FaMapMarkerAlt className="detail-icon" />
-                    <div className="detail-text">
-                      <p>
-                        {resource.address_line1}
-                        {resource.address_line2 && `, ${resource.address_line2}`}
-                        {resource.city && `, ${resource.city}`}
-                        {resource.state && `, ${resource.state}`}
-                        {resource.zip && ` ${resource.zip}`}
-                      </p>
-                    </div>
+            <div className="detail-section">
+              <h2>Location</h2>
+              <div className="map-container">
+                {resource.latitude && resource.longitude ? (
+                  <MapView 
+                    resources={[resource]} 
+                    transitRoutes={transitRoutes}
+                    showTransitLegend={transitRoutes.length > 0}
+                  />
+                ) : (
+                  <div className="map-placeholder">
+                    <FaMapMarkerAlt />
+                    <p>Location data not available for this resource.</p>
                   </div>
                 )}
-                
+              </div>
+              
+              {resource.address_line1 && (
+                <div className="detail-item">
+                  <FaMapMarkerAlt className="detail-icon" />
+                  <div className="detail-text">
+                    <p>
+                      {resource.address_line1}
+                      {resource.address_line2 && <br />}{resource.address_line2}
+                      <br />
+                      {resource.city}, {resource.state} {resource.zip}
+                    </p>
+                    
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        `${resource.address_line1}, ${resource.city}, ${resource.state} ${resource.zip}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="directions-button"
+                    >
+                      <FaMapMarkerAlt /> Get Directions
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="detail-section">
+              <h2>Contact Information</h2>
+              <div className="contact-details">
                 {resource.phone && (
                   <div className="detail-item">
                     <FaPhone className="detail-icon" />
                     <div className="detail-text">
-                      <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
-                        {formatPhone(resource.phone)}
-                      </a>
+                      <p>
+                        <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
+                          {formatPhone(resource.phone)}
+                        </a>
+                      </p>
                     </div>
                   </div>
                 )}
@@ -178,14 +219,15 @@ const ImprovedResourceDetailPage = () => {
                   <div className="detail-item">
                     <FaGlobe className="detail-icon" />
                     <div className="detail-text">
-                      <a 
-                        href={resource.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                      >
-                        Visit Website 
-                        <FaExternalLinkAlt className="external-link-icon" />
-                      </a>
+                      <p>
+                        <a 
+                          href={resource.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          Visit Website <FaExternalLinkAlt size={12} />
+                        </a>
+                      </p>
                     </div>
                   </div>
                 )}
@@ -199,65 +241,49 @@ const ImprovedResourceDetailPage = () => {
                   </div>
                 )}
               </div>
-
-              {/* Resource Features */}
-              <div className="features-section">
-                <div className="features-grid">
-                  {resource.accepts_uninsured && (
-                    <div className={`feature-card ${resource.accepts_uninsured ? 'active' : 'inactive'}`}>
-                      <FaCheckCircle className={`feature-icon ${resource.accepts_uninsured ? 'active' : 'inactive'}`} />
-                      <h3>Accepts Uninsured</h3>
-                      <p>This resource is available to patients without insurance.</p>
-                    </div>
-                  )}
-                  
-                  {resource.sliding_scale && (
-                    <div className={`feature-card ${resource.sliding_scale ? 'active' : 'inactive'}`}>
-                      <FaCheckCircle className={`feature-icon ${resource.sliding_scale ? 'active' : 'inactive'}`} />
-                      <h3>Sliding Scale Fees</h3>
-                      <p>Offers flexible pricing based on income.</p>
-                    </div>
-                  )}
-                  
-                  {resource.free_care_available && (
-                    <div className={`feature-card ${resource.free_care_available ? 'active' : 'inactive'}`}>
-                      <FaCheckCircle className={`feature-icon ${resource.free_care_available ? 'active' : 'inactive'}`} />
-                      <h3>Free Care Available</h3>
-                      <p>Provides free services to eligible patients.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Notes Section */}
-              {resource.notes && (
-                <div className="notes-container">
-                  <h2>Additional Information</h2>
-                  <p>{resource.notes}</p>
-                </div>
-              )}
-
-              {/* Transit Routes */}
-              <div className="detail-section">
-                <h2>Transit Options</h2>
-                <TransitRoutesTab resource={resource} />
-              </div>
-            </div>
-
-            {/* Map Column */}
-            <div className="map-container">
-              {resource.latitude && resource.longitude ? (
-                <MapView resources={[resource]} />
-              ) : (
-                <div className="map-placeholder">
-                  <FaMapMarkerAlt />
-                  <p>Location data not available for this resource.</p>
-                </div>
-              )}
             </div>
           </div>
-
-          {/* Action Section */}
+          
+          <div className="features-section">
+            <h2>Features</h2>
+            <div className="features-grid">
+              <div className={`feature-card ${resource.accepts_uninsured ? 'active' : 'inactive'}`}>
+                <FaCheckCircle className={`feature-icon ${resource.accepts_uninsured ? 'active' : 'inactive'}`} />
+                <h3>Accepts Uninsured</h3>
+                <p>This resource is available to patients without insurance.</p>
+              </div>
+              
+              <div className={`feature-card ${resource.sliding_scale ? 'active' : 'inactive'}`}>
+                <FaCheckCircle className={`feature-icon ${resource.sliding_scale ? 'active' : 'inactive'}`} />
+                <h3>Sliding Scale Fees</h3>
+                <p>Offers flexible pricing based on income.</p>
+              </div>
+              
+              <div className={`feature-card ${resource.free_care_available ? 'active' : 'inactive'}`}>
+                <FaCheckCircle className={`feature-icon ${resource.free_care_available ? 'active' : 'inactive'}`} />
+                <h3>Free Care Available</h3>
+                <p>Provides free services to eligible patients.</p>
+              </div>
+            </div>
+          </div>
+          
+          {resource.notes && (
+            <div className="detail-section">
+              <h2>Additional Information</h2>
+              <div className="notes-container">
+                <p>{resource.notes}</p>
+              </div>
+            </div>
+          )}
+          
+          <div className="detail-section">
+            <h2>Transit Options</h2>
+            <TransitRoutesTab 
+              resource={resource} 
+              onRoutesFound={handleTransitRoutesFound}
+            />
+          </div>
+          
           <div className="action-section">
             <div className="action-buttons">
               {resource.phone && (

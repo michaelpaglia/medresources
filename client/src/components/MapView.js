@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaExclamationTriangle, FaBus } from 'react-icons/fa';
@@ -6,21 +6,22 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../styles/MapView.css';
 
-const DefaultIcon = L.icon({
-  iconUrl: '/marker-icon.png',
-  shadowUrl: '/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+// Fix Leaflet default icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
 });
 
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const MapBoundsUpdater = ({ resources }) => {
+const MapBoundsUpdater = ({ resources, transitRoutes = [] }) => {
   const map = useMap();
 
   useEffect(() => {
+    // Create a collection of all points to include in bounds
+    const points = [];
+    
+    // Add resource locations
     if (resources && resources.length > 0) {
       const validLocations = resources.filter(
         res => res.latitude && res.longitude &&
@@ -28,18 +29,31 @@ const MapBoundsUpdater = ({ resources }) => {
         !isNaN(parseFloat(res.longitude))
       );
 
-      if (validLocations.length > 0) {
-        const bounds = L.latLngBounds(
-          validLocations.map(res => [
-            parseFloat(res.latitude),
-            parseFloat(res.longitude)
-          ])
-        );
-
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
-      }
+      validLocations.forEach(res => {
+        points.push([
+          parseFloat(res.latitude),
+          parseFloat(res.longitude)
+        ]);
+      });
     }
-  }, [map, resources]);
+    
+    // Add transit route points
+    if (transitRoutes && transitRoutes.length > 0) {
+      transitRoutes.forEach(route => {
+        if (route.path && route.path.length > 0) {
+          route.path.forEach(point => {
+            points.push(point);
+          });
+        }
+      });
+    }
+
+    // Fit bounds if we have points
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+    }
+  }, [map, resources, transitRoutes]);
 
   return null;
 };
@@ -57,21 +71,20 @@ const resourceTypes = {
   10: { name: 'Urgent Care', color: '#FF5722' }
 };
 
-const createColoredIcon = (color) => {
-  return new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-};
+// Transit Stop Icon
+const transitStopIcon = new L.Icon({
+  iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
-const MapView = ({ resources, transitRoutes = [] }) => {
+const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) => {
   const mapRef = useRef(null);
 
-  const defaultCenter = [42.7284, -73.6918];
+  const defaultCenter = [42.7284, -73.6918]; // Troy, NY
   const defaultZoom = 12;
 
   const formatPhone = (phone) => {
@@ -99,25 +112,6 @@ const MapView = ({ resources, transitRoutes = [] }) => {
   const getRouteColor = (routeId) => {
     const routeNumber = routeId?.split('-')?.[0];
     return routeColors[routeNumber] || routeColors.default;
-  };
-
-  const prepareTransitRoutes = () => {
-    return transitRoutes.map(route => {
-      const startLat = parseFloat(route.startLat || 0);
-      const startLon = parseFloat(route.startLon || 0);
-      const endLat = parseFloat(route.endLat || 0);
-      const endLon = parseFloat(route.endLon || 0);
-
-      return {
-        id: route.routeId,
-        name: route.routeName,
-        color: getRouteColor(route.routeId),
-        path: [
-          [startLat, startLon],
-          [endLat, endLon]
-        ]
-      };
-    });
   };
 
   if (!resources || resources.length === 0) {
@@ -148,8 +142,6 @@ const MapView = ({ resources, transitRoutes = [] }) => {
     );
   }
 
-  const mapTransitRoutes = prepareTransitRoutes();
-
   return (
     <div className="map-view-container">
       <MapContainer
@@ -163,25 +155,61 @@ const MapView = ({ resources, transitRoutes = [] }) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapBoundsUpdater resources={validResources} />
+        <MapBoundsUpdater resources={validResources} transitRoutes={transitRoutes} />
 
-        {mapTransitRoutes.map((route, index) => (
-          <Polyline
-            key={`route-${index}`}
-            positions={route.path}
-            color={route.color}
-            weight={4}
-            opacity={0.7}
-          >
-            <Popup>
-              <div>
-                <h3><FaBus style={{ marginRight: '5px' }} /> {route.name}</h3>
-                <p>Route {route.id}</p>
-              </div>
-            </Popup>
-          </Polyline>
+        {/* Transit routes and stops */}
+        {transitRoutes.map((route, index) => (
+          <React.Fragment key={`route-${index}`}>
+            {/* The route line */}
+            <Polyline
+              positions={route.path}
+              color={getRouteColor(route.routeId)}
+              weight={4}
+              opacity={0.7}
+            >
+              <Popup>
+                <div>
+                  <h3><FaBus style={{ marginRight: '5px' }} /> {route.name}</h3>
+                  <p>Route {route.routeId}</p>
+                </div>
+              </Popup>
+            </Polyline>
+            
+            {/* Start stop marker */}
+            {route.startLat && route.startLon && (
+              <Marker
+                position={[parseFloat(route.startLat), parseFloat(route.startLon)]}
+                icon={transitStopIcon}
+              >
+                <Popup>
+                  <div>
+                    <h3>Bus Stop: {route.startStopName || 'Start'}</h3>
+                    <p>Route: {route.name}</p>
+                    <p>Walk to this stop: {route.walkToStartStop || '?'} miles</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+            
+            {/* End stop marker */}
+            {route.endLat && route.endLon && (
+              <Marker
+                position={[parseFloat(route.endLat), parseFloat(route.endLon)]}
+                icon={transitStopIcon}
+              >
+                <Popup>
+                  <div>
+                    <h3>Bus Stop: {route.endStopName || 'End'}</h3>
+                    <p>Route: {route.name}</p>
+                    <p>Walk from this stop: {route.walkFromEndStop || '?'} miles</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+          </React.Fragment>
         ))}
 
+        {/* Resource markers */}
         {validResources.map((resource) => {
           const resourceType = getResourceType(resource.resource_type_id);
           return (
@@ -219,6 +247,24 @@ const MapView = ({ resources, transitRoutes = [] }) => {
           );
         })}
       </MapContainer>
+
+      {/* Transit Legend */}
+      {showTransitLegend && transitRoutes.length > 0 && (
+        <div className="transit-legend">
+          <h4>Transit Routes</h4>
+          <ul className="legend-items">
+            {transitRoutes.map((route, index) => (
+              <li key={`legend-${index}`}>
+                <span 
+                  className="legend-color" 
+                  style={{ backgroundColor: getRouteColor(route.routeId) }}
+                ></span>
+                <span className="legend-label">{route.name || `Route ${route.routeId}`}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {resources.length > validResources.length && (
         <div className="missing-locations-notice">
