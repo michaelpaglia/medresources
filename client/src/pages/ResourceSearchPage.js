@@ -1,5 +1,5 @@
 // src/pages/ResourceSearchPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   FaSearch, 
@@ -9,6 +9,7 @@ import {
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
 import MapView from '../components/MapView';
 import '../styles/ImprovedResourceSearchPage.css';
+
 
 const ResourceSearchPage = () => {
   const location = useLocation();
@@ -47,26 +48,7 @@ const ResourceSearchPage = () => {
   ];
 
   // Parse query parameters and fetch initial data
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const queryParam = searchParams.get('query') || '';
-    const typeParam = searchParams.get('type') || '';
-    
-    // Clear the URL parameters after reading them
-    if (queryParam || typeParam) {
-      setSearchTerm(queryParam);
-      setFilters(prev => ({
-        ...prev,
-        resourceType: typeParam
-      }));
-      
-      // Fetch resources with the parameters
-      fetchResources(queryParam, typeParam);
-    } else {
-      // If no parameters, fetch all resources
-      fetchResources();
-    }
-  }, []);
+
 
   // Function to clear URL parameters while keeping the current path
   const clearUrlParams = () => {
@@ -74,7 +56,7 @@ const ResourceSearchPage = () => {
   };
 
   // Fetch resources from API
-  const fetchResources = (query = '', type = '') => {
+  const fetchResources = useCallback((query = '', type = '') => {
     setIsLoading(true);
     
     // Build the API URL with query parameters
@@ -116,7 +98,7 @@ const ResourceSearchPage = () => {
         setError('Failed to load resources. Please try again later.');
         setIsLoading(false);
       });
-  };
+  }, [clearUrlParams, navigate]); // Add clearUrlParams as dependency);
 
   // Handle text search
   const handleSearchSubmit = (e) => {
@@ -204,12 +186,31 @@ const ResourceSearchPage = () => {
     });
   };
 
-  // Apply filters when filters change
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const queryParam = searchParams.get('query') || '';
+    const typeParam = searchParams.get('type') || '';
+    
+    // Clear the URL parameters after reading them
+    if (queryParam || typeParam) {
+      setSearchTerm(queryParam);
+      setFilters(prev => ({
+        ...prev,
+        resourceType: typeParam
+      }));
+      
+      // Fetch resources with the parameters
+      fetchResources(queryParam, typeParam);
+    } else {
+      // If no parameters, fetch all resources
+      fetchResources();
+    }
+  }, [location.search, fetchResources]);
+
   useEffect(() => {
     applyFilters();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
-
+  }, [filters, resources]);
+  
   return (
     <div className="improved-search-page">
       <h1>Find Medical Resources in Troy, NY</h1>

@@ -1,4 +1,4 @@
-// components/Navbar.js - Google Style
+// components/Navbar.js
 import React, { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { FiMenu, FiX, FiGrid } from 'react-icons/fi';
@@ -9,9 +9,12 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   
-  // Don't show navbar on home page for Google-style experience
+  // Check if we're on the search page to hide the search bar
+  const isSearchPage = location.pathname === '/search';
+  // Check if we're on home page for Google-style experience
   const isHomePage = location.pathname === '/';
   
+  // Don't show navbar on home page for Google-style experience
   if (isHomePage) {
     return null;
   }
@@ -22,6 +25,11 @@ const Navbar = () => {
 
   const closeMenu = () => {
     setIsMenuOpen(false);
+  };
+
+  // Function to handle search bar click - routes to search page
+  const handleSearchClick = () => {
+    window.location.href = '/search';
   };
 
   return (
@@ -35,24 +43,23 @@ const Navbar = () => {
           </div>
         </Link>
 
-        {/* Mini search bar for pages other than home */}
-        <div className="navbar-search">
-          <div className="search-box">
-            <div className="search-icon">
-              <FaSearch size={16} color="#9aa0a6" />
+        {/* Mini search bar - only show when NOT on search page */}
+        {!isSearchPage && (
+          <div className="navbar-search">
+            <div className="search-box">
+              <div className="search-icon">
+                <FaSearch size={16} color="#9aa0a6" />
+              </div>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search resources"
+                aria-label="Search resources"
+                onClick={handleSearchClick}
+              />
             </div>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search resources"
-              aria-label="Search resources"
-              onClick={() => {
-                // Navigate to search page on click
-                window.location.href = '/search';
-              }}
-            />
           </div>
-        </div>
+        )}
 
         <div className="menu-icon" onClick={toggleMenu}>
           {isMenuOpen ? <FiX size={24} color="#5f6368" /> : <FiMenu size={24} color="#5f6368" />}
