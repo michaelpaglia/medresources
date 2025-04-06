@@ -4,10 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   FaSearch, 
   FaMapMarkedAlt, 
-  FaList, 
-  FaFilter, 
-  FaChevronDown,
-  FaChevronUp 
+  FaList
 } from 'react-icons/fa';
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
 import MapView from '../components/MapView';
@@ -21,7 +18,7 @@ const ResourceSearchPage = () => {
   const [viewMode, setViewMode] = useState('list');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState('keyword');
   
   // Search states
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,14 +52,26 @@ const ResourceSearchPage = () => {
     const queryParam = searchParams.get('query') || '';
     const typeParam = searchParams.get('type') || '';
     
-    setSearchTerm(queryParam);
-    setFilters(prev => ({
-      ...prev,
-      resourceType: typeParam
-    }));
-    
-    fetchResources(queryParam, typeParam);
-  }, [location.search]);
+    // Clear the URL parameters after reading them
+    if (queryParam || typeParam) {
+      setSearchTerm(queryParam);
+      setFilters(prev => ({
+        ...prev,
+        resourceType: typeParam
+      }));
+      
+      // Fetch resources with the parameters
+      fetchResources(queryParam, typeParam);
+    } else {
+      // If no parameters, fetch all resources
+      fetchResources();
+    }
+  }, []);
+
+  // Function to clear URL parameters while keeping the current path
+  const clearUrlParams = () => {
+    navigate('/search', { replace: true });
+  };
 
   // Fetch resources from API
   const fetchResources = (query = '', type = '') => {
@@ -98,6 +107,9 @@ const ResourceSearchPage = () => {
         setResources(cleanedData);
         setFilteredResources(cleanedData);
         setIsLoading(false);
+        
+        // Clear the URL parameters after loading
+        clearUrlParams();
       })
       .catch(error => {
         console.error('Error fetching resources:', error);
@@ -110,18 +122,12 @@ const ResourceSearchPage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     
-    // Update URL with search parameters
-    const params = new URLSearchParams();
-    if (searchTerm) params.set('query', searchTerm);
-    if (filters.resourceType) params.set('type', filters.resourceType);
-    
-    navigate({
-      pathname: '/search',
-      search: params.toString()
-    });
-    
-    // Fetch resources with the new search term
-    fetchResources(searchTerm, filters.resourceType);
+    // Perform the search without updating URL
+    if (searchTerm.trim()) {
+      fetchResources(searchTerm, filters.resourceType);
+    } else {
+      fetchResources('', filters.resourceType);
+    }
   };
 
   // Handle location-based search
@@ -150,6 +156,9 @@ const ResourceSearchPage = () => {
         setResources(cleanedData);
         setFilteredResources(cleanedData);
         setIsLoading(false);
+        
+        // Clear the URL parameters after loading
+        clearUrlParams();
       })
       .catch(error => {
         console.error('Error fetching resources by location:', error);
@@ -162,7 +171,7 @@ const ResourceSearchPage = () => {
   const applyFilters = () => {
     const filtered = resources.filter(resource => {
       // Resource type filter
-      if (filters.resourceType && resource.resource_type_id.toString() !== filters.resourceType) {
+      if (filters.resourceType && resource.resource_type_id?.toString() !== filters.resourceType) {
         return false;
       }
       
@@ -198,6 +207,7 @@ const ResourceSearchPage = () => {
   // Apply filters when filters change
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   return (
@@ -207,21 +217,21 @@ const ResourceSearchPage = () => {
       <div className="unified-search-container">
         <div className="search-tabs">
           <button 
-            className={!showFilters ? "active-tab" : ""} 
-            onClick={() => setShowFilters(false)}
+            className={activeTab === 'keyword' ? "active-tab" : ""} 
+            onClick={() => setActiveTab('keyword')}
           >
             Search by Keyword
           </button>
           <button 
-            className={showFilters ? "active-tab" : ""} 
-            onClick={() => setShowFilters(true)}
+            className={activeTab === 'advanced' ? "active-tab" : ""} 
+            onClick={() => setActiveTab('advanced')}
           >
             Advanced Search
           </button>
         </div>
         
         <div className="search-content">
-          {!showFilters ? (
+          {activeTab === 'keyword' ? (
             <form onSubmit={handleSearchSubmit} className="keyword-search">
               <div className="search-input-container">
                 <FaSearch className="search-icon" />

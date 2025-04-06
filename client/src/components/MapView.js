@@ -1,181 +1,238 @@
 // components/MapView.js
-import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import React, { useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { Link } from 'react-router-dom';
+import { FaMapMarkerAlt, FaExclamationTriangle } from 'react-icons/fa';
 import L from 'leaflet';
-import { 
-  FaMapMarkerAlt, 
-  FaHospital, 
-  FaMedkit, 
-  FaPills, 
-  FaTooth, 
-  FaBrain 
-} from 'react-icons/fa';
-import 'leaflet/dist/leaflet.css';
 import '../styles/MapView.css';
 
-// Fix for marker icons in React
+// Fix for default marker icons in React Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
-let DefaultIcon = L.icon({
+const defaultIcon = L.icon({
   iconUrl: icon,
   shadowUrl: iconShadow,
   iconSize: [25, 41],
-  iconAnchor: [12, 41]
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34]
 });
 
-L.Marker.prototype.options.icon = DefaultIcon;
+L.Marker.prototype.options.icon = defaultIcon;
 
-// Create custom icon for each resource type
-const createCustomIcon = (IconComponent, color) => {
-  // Create an HTML element with the React icon
-  const customIcon = L.divIcon({
-    className: 'custom-map-icon',
-    html: `<div style="color: ${color}; background-color: white; border-radius: 50%; padding: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-            <svg viewBox="0 0 24 24" width="24" height="24" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              ${getIconPath(IconComponent.name)}
-            </svg>
-          </div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  });
-  return customIcon;
+// Custom component to update map view when resources change
+const MapBoundsUpdater = ({ resources }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (resources && resources.length > 0) {
+      // Filter out resources without valid coordinates
+      const validLocations = resources.filter(
+        res => res.latitude && res.longitude && 
+        !isNaN(parseFloat(res.latitude)) && 
+        !isNaN(parseFloat(res.longitude))
+      );
+      
+      if (validLocations.length > 0) {
+        // Create bounds object
+        const bounds = validLocations.reduce((bounds, resource) => {
+          const lat = parseFloat(resource.latitude);
+          const lng = parseFloat(resource.longitude);
+          return bounds.extend([lat, lng]);
+        }, L.latLngBounds([]));
+        
+        // Only fit bounds if we have valid points
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, {
+            padding: [50, 50],
+            maxZoom: 13
+          });
+        }
+      }
+    }
+  }, [map, resources]);
+  
+  return null;
 };
 
-// Helper function to get SVG path based on icon name
-function getIconPath(iconName) {
-  switch (iconName) {
-    case 'FaHospital':
-      return '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z" />';
-    case 'FaMedkit':
-      return '<path d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm6 11h-3v3h-2v-3H8v-2h3V10h2v3h3v2z" />';
-    case 'FaPills':
-      return '<path d="M6 3h12v2H6zm7 11v-6h5v6c0 3.31-2.69 6-6 6s-6-2.69-6-6v-6h5v6c0 .55.45 1 1 1s1-.45 1-1z" />';
-    case 'FaTooth':
-      return '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 16c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-4c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-4c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />';
-    case 'FaBrain':
-      return '<path d="M21 12.22C21 6.73 16.74 3 12 3c-4.69 0-9 3.65-9 9.28-.6.07-.11.14-.11.22l.05.02C3.44 15.83 5.17 18 7.5 18c1.33 0 2.5-.62 3.5-1.61C12 17.38 13.17 18 14.5 18c2.33 0 4.06-2.17 4.56-5.48l.05-.02c-.01-.08-.11-.15-.11-.28zM10.24 16.2c-.78.85-1.76 1.3-2.74 1.3-1.95 0-3.5-1.96-3.5-4.5 0-2.06 1.16-3.8 2.74-4.59.03 1.62.41 3.12 1.08 4.45.11.22.24.43.37.64.13.21.26.42.41.61.08.1.16.21.24.31.1.11.2.21.31.32.38.38.81.7 1.09.94zM14.5 17.5c-.98 0-1.96-.45-2.74-1.3.28-.24.71-.56 1.09-.94.11-.11.21-.21.31-.32.09-.1.17-.21.25-.31.14-.19.28-.4.4-.61.13-.21.26-.42.37-.64.67-1.33 1.05-2.83 1.08-4.45 1.58.79 2.74 2.53 2.74 4.59 0 2.54-1.55 4.5-3.5 4.5z" />';
-    default:
-      return '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />';
-  }
-}
+// Resource type mapping for marker colors
+const resourceTypes = {
+  1: { name: 'Health Center', color: '#4285F4' },
+  2: { name: 'Hospital', color: '#EA4335' },
+  3: { name: 'Pharmacy', color: '#34A853' },
+  4: { name: 'Dental Care', color: '#FBBC05' },
+  5: { name: 'Mental Health', color: '#9C27B0' },
+  6: { name: 'Transportation', color: '#3949AB' },
+  7: { name: 'Social Services', color: '#00ACC1' },
+  8: { name: "Women's Health", color: '#EC407A' },
+  9: { name: 'Specialty Care', color: '#FF7043' },
+  10: { name: 'Urgent Care', color: '#FF5722' }
+};
 
-// Resource type icons map
-const resourceTypeIcons = {
-  1: createCustomIcon(FaMedkit, '#4285F4'),         // Health Center 
-  2: createCustomIcon(FaHospital, '#EA4335'),       // Hospital
-  3: createCustomIcon(FaPills, '#34A853'),          // Pharmacy
-  4: createCustomIcon(FaTooth, '#FBBC05'),          // Dental Clinic
-  5: createCustomIcon(FaBrain, '#DB4437'),          // Mental Health
-  6: createCustomIcon(FaMapMarkerAlt, '#4285F4')    // Default/Transportation
+// Create custom colored icons for each resource type
+const createColoredIcon = (color) => {
+  return L.divIcon({
+    className: 'custom-marker-icon',
+    html: `<div style="background-color: ${color}; border: 2px solid white; border-radius: 50%; width: 100%; height: 100%; box-shadow: 0 0 3px rgba(0,0,0,0.4);"></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10]
+  });
 };
 
 const MapView = ({ resources }) => {
   const mapRef = useRef(null);
-
-  // Center on Troy, NY
+  const [validResources, setValidResources] = useState([]);
+  const [invalidResources, setInvalidResources] = useState([]);
+  
+  // Default center for Troy, NY area
   const defaultCenter = [42.7284, -73.6918];
-  const defaultZoom = 13;
-
-  // Resource type mapping
-  const resourceTypes = {
-    1: 'Health Center',
-    2: 'Hospital',
-    3: 'Pharmacy',
-    4: 'Dental Clinic',
-    5: 'Mental Health',
-    6: 'Transportation',
-    7: 'Social Services',
-    8: 'Women\'s Health',
-    9: 'Specialty Care',
-    10: 'Urgent Care'
-  };
-
+  const defaultZoom = 12;
+  
   useEffect(() => {
-    // Adjust view when resources change
-    if (mapRef.current && resources.length > 0) {
-      // If we have resources with coordinates, fit the map to show all markers
-      const validCoords = resources.filter(
-        r => r.latitude && r.longitude
-      );
+    if (resources && resources.length > 0) {
+      // Separate resources with valid coordinates from those without
+      const valid = [];
+      const invalid = [];
       
-      if (validCoords.length > 0) {
-        const bounds = validCoords.map(r => [r.latitude, r.longitude]);
-        mapRef.current.fitBounds(bounds);
-      }
+      resources.forEach(resource => {
+        const lat = parseFloat(resource.latitude);
+        const lng = parseFloat(resource.longitude);
+        
+        if (lat && lng && !isNaN(lat) && !isNaN(lng) && 
+            lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          valid.push({
+            ...resource,
+            latitude: lat,
+            longitude: lng
+          });
+        } else {
+          invalid.push(resource);
+        }
+      });
+      
+      setValidResources(valid);
+      setInvalidResources(invalid);
     }
   }, [resources]);
 
+  // Format phone number for display
+  const formatPhone = (phone) => {
+    if (!phone) return '';
+    
+    // Remove non-numeric characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Format as (XXX) XXX-XXXX if it's a 10-digit number
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    
+    return phone;
+  };
+
+  // Get resource type info or default
+  const getResourceType = (typeId) => {
+    return resourceTypes[typeId] || { name: 'Resource', color: '#757575' };
+  };
+
+  if (!resources || resources.length === 0) {
+    return (
+      <div className="map-container">
+        <div className="map-placeholder">
+          <FaExclamationTriangle size={32} />
+          <p>No resources found to display on map.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (validResources.length === 0 && resources.length > 0) {
+    return (
+      <div className="map-container">
+        <div className="map-placeholder">
+          <FaExclamationTriangle size={32} />
+          <p>No valid location data available for the selected resources.</p>
+          <p className="small-text">Try adjusting your search or view as list instead.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="map-container">
-      <MapContainer 
-        center={defaultCenter} 
-        zoom={defaultZoom} 
-        scrollWheelZoom={false}
-        className="map"
-        whenCreated={mapInstance => {
-          mapRef.current = mapInstance;
-        }}
+    <div className="map-view-container">
+      <MapContainer
+        center={defaultCenter}
+        zoom={defaultZoom}
+        style={{ height: '600px', width: '100%' }}
+        ref={mapRef}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {resources.map(resource => {
-          // Skip resources without coordinates
-          if (!resource.latitude || !resource.longitude) {
-            return null;
-          }
-          
-          const icon = resourceTypeIcons[resource.resource_type_id] || resourceTypeIcons[6];
+        <MapBoundsUpdater resources={validResources} />
+        
+        {validResources.map((resource) => {
+          const resourceType = getResourceType(resource.resource_type_id);
+          const icon = createColoredIcon(resourceType.color);
           
           return (
-            <Marker 
+            <Marker
               key={resource.id}
               position={[resource.latitude, resource.longitude]}
               icon={icon}
             >
-              <Popup>
-                <div className="map-popup">
+              <Popup className="resource-popup">
+                <div className="popup-content">
                   <h3>{resource.name}</h3>
-                  <p className="resource-type">
-                    {resourceTypes[resource.resource_type_id] || 'Medical Service'}
-                  </p>
-                  <p className="address">
-                    {resource.address_line1}<br />
-                    {resource.city}, {resource.state} {resource.zip}
-                  </p>
+                  <div className="resource-type">
+                    {resourceType.name}
+                  </div>
+                  
+                  <div className="popup-address">
+                    <FaMapMarkerAlt />
+                    <span>{resource.address_line1}<br />
+                    {resource.city}, {resource.state} {resource.zip}</span>
+                  </div>
+                  
                   {resource.phone && (
-                    <p className="phone">{resource.phone}</p>
+                    <div className="popup-phone">
+                      <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
+                        {formatPhone(resource.phone)}
+                      </a>
+                    </div>
                   )}
-                  {resource.hours && (
-                    <p className="hours">{resource.hours}</p>
-                  )}
+                  
                   <div className="popup-features">
                     {resource.accepts_uninsured && (
-                      <span className="feature">Accepts Uninsured</span>
+                      <span className="feature-tag">Accepts Uninsured</span>
                     )}
                     {resource.sliding_scale && (
-                      <span className="feature">Sliding Scale</span>
+                      <span className="feature-tag">Sliding Scale</span>
                     )}
                     {resource.free_care_available && (
-                      <span className="feature">Free Care</span>
+                      <span className="feature-tag">Free Care</span>
                     )}
                   </div>
-                  <a 
-                    href={`/resource/${resource.id}`} 
-                    className="view-details"
-                  >
+                  
+                  <Link to={`/resource/${resource.id}`} className="view-details-btn">
                     View Details
-                  </a>
+                  </Link>
                 </div>
               </Popup>
             </Marker>
           );
         })}
       </MapContainer>
+      
+      {invalidResources.length > 0 && (
+        <div className="missing-locations-notice">
+          <FaExclamationTriangle />
+          <span>{invalidResources.length} resource{invalidResources.length !== 1 ? 's' : ''} without location data {invalidResources.length === 1 ? 'is' : 'are'} not shown on the map.</span>
+        </div>
+      )}
     </div>
   );
 };
