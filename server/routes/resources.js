@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const resourceController = require('../controllers/resourceController');
-
+const transitController = require('../controllers/transitController');
 // IMPORTANT: Order matters - most specific routes first
 // Test OpenAI connection - PUT THIS BEFORE THE ID ROUTE
 router.get('/test-openai', resourceController.testOpenAI);
@@ -18,6 +18,9 @@ router.get('/type/:typeId', resourceController.getResourcesByType);
 
 // POST load resources for a location (admin endpoint)
 router.post('/load', resourceController.loadResourcesForLocation);
+router.post('/enrich-location/:id', resourceController.enrichResourceLocation);
+router.post('/update-coordinates', resourceController.updateMissingCoordinates);
+router.post('/transit-routes', transitController.findTransitRoutes);
 
 // GET all resources
 router.get('/', resourceController.getAllResources);

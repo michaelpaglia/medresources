@@ -1,130 +1,24 @@
-// pages/ImprovedResourceDetailPage.js
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { 
   FaMapMarkerAlt, 
   FaPhone, 
-  FaGlobe, 
   FaClock, 
-  FaCheckCircle, 
-  FaTimesCircle,
-  FaArrowLeft,
-  FaDirections,
-  FaPrint,
-  FaEnvelope 
+  FaGlobe, 
+  FaCheckCircle,
+  FaExternalLinkAlt,
+  FaArrowLeft
 } from 'react-icons/fa';
-import 'leaflet/dist/leaflet.css';
+import MapView from '../components/MapView';
+import TransitRoutesTab from '../components/TransitRoutesTab';
 import '../styles/ImprovedResourceDetailPage.css';
 
-// Fix for Leaflet marker icons in React
-import L from 'leaflet';
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [0, -41]
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const ImprovedResourceDetailPage = () => {
-  const { id } = useParams();
+const ImprovedResourceDetailPage = ({ match, history }) => {
+  const { id } = match.params;
   const [resource, setResource] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  useEffect(() => {
-    const fetchResource = async () => {
-      try {
-        setLoading(true);
-        
-        const response = await fetch(`/api/resources/${id}`);
-        
-        if (!response.ok) {
-          throw new Error('Resource not found');
-        }
-        
-        const data = await response.json();
-        
-        // Clean up any AI analysis references from notes
-        if (data.notes) {
-          data.notes = data.notes
-            .replace(/\s?\(Data enriched via AI.*?\)/g, '')
-            .replace(/\s?\(Data enrichment failed\)/g, '');
-        }
-        
-        setResource(data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching resource:', error);
-        setError('Failed to load resource details. Please try again later.');
-        setLoading(false);
-      }
-    };
 
-    fetchResource();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="detail-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading resource details...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="detail-error">
-        <h2>Error</h2>
-        <p>{error}</p>
-        <Link to="/search" className="btn-back">
-          <FaArrowLeft /> Back to Search Results
-        </Link>
-      </div>
-    );
-  }
-
-  if (!resource) {
-    return (
-      <div className="detail-not-found">
-        <h2>Resource Not Found</h2>
-        <p>The resource you're looking for doesn't exist or has been removed.</p>
-        <Link to="/search" className="btn-back">
-          <FaArrowLeft /> Back to Search Results
-        </Link>
-      </div>
-    );
-  }
-
-  const {
-    name,
-    resource_type_id,
-    address_line1,
-    address_line2,
-    city,
-    state,
-    zip,
-    phone,
-    website,
-    email,
-    hours,
-    eligibility_criteria,
-    accepts_uninsured,
-    sliding_scale,
-    free_care_available,
-    notes,
-    latitude,
-    longitude
-  } = resource;
-
-  // Resource type mapping with colors
+  // Resource type mapping
   const resourceTypes = {
     1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe' },
     2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6' },
@@ -133,20 +27,33 @@ const ImprovedResourceDetailPage = () => {
     5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5' },
     6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6' },
     7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa' },
-    8: { name: 'Women\'s Health', color: '#EC407A', bgColor: '#fce4ec' },
+    8: { name: "Women's Health", color: '#EC407A', bgColor: '#fce4ec' },
     9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7' },
     10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7' }
   };
 
-  // Get resource type or default
-  const resourceType = resourceTypes[resource_type_id] || 
-    { name: 'Medical Resource', color: '#757575', bgColor: '#f5f5f5' };
+  // Fetch resource details
+  useEffect(() => {
+    const fetchResourceDetails = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/resources/${id}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch resource details');
+        }
+        
+        const data = await response.json();
+        setResource(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Format address for Google Maps
-  const formattedAddress = encodeURIComponent(
-    `${address_line1}, ${city}, ${state} ${zip}`
-  );
-  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${formattedAddress}`;
+    fetchResourceDetails();
+  }, [id]);
 
   // Format phone number
   const formatPhone = (phoneNumber) => {
@@ -155,7 +62,7 @@ const ImprovedResourceDetailPage = () => {
     // Remove non-numeric characters
     const cleaned = phoneNumber.replace(/\D/g, '');
     
-    // Format as (XXX) XXX-XXXX
+    // Format as (XXX) XXX-XXXX if it's a 10-digit number
     if (cleaned.length === 10) {
       return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
     }
@@ -163,20 +70,65 @@ const ImprovedResourceDetailPage = () => {
     return phoneNumber;
   };
 
-  // Check if we have valid coordinates
-  const hasValidCoordinates = latitude && longitude && 
-    !isNaN(parseFloat(latitude)) && !isNaN(parseFloat(longitude));
+  // Get resource type style
+  const getResourceTypeStyle = (typeId) => {
+    return resourceTypes[typeId] || { 
+      name: 'Medical Resource', 
+      color: '#757575', 
+      bgColor: '#f5f5f5' 
+    };
+  };
+
+  // Render loading state
+  if (isLoading) {
+    return (
+      <div className="detail-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading resource details...</p>
+      </div>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <div className="detail-error">
+        <h2>Error Loading Resource</h2>
+        <p>{error}</p>
+        <button 
+          className="btn-back"
+          onClick={() => history.push('/search')}
+        >
+          <FaArrowLeft /> Back to Search
+        </button>
+      </div>
+    );
+  }
+    // No resource found
+  if (!resource) {
+    return (
+      <div className="detail-not-found">
+        <h2>Resource Not Found</h2>
+        <p>The requested resource could not be located.</p>
+        <button 
+          className="btn-back"
+          onClick={() => history.push('/search')}
+        >
+          <FaArrowLeft /> Back to Search
+        </button>
+      </div>
+    );
+  }
+
+  // Resource type details
+  const resourceType = getResourceTypeStyle(resource.resource_type_id);
 
   return (
     <div className="resource-detail-page">
-      <Link to="/search" className="back-link">
-        <FaArrowLeft /> Back to Search Results
-      </Link>
-      
       <div className="detail-container">
-        <header className="detail-header">
-          <h1>{name}</h1>
-          <div 
+        <div className="detail-header">
+          <h1>{resource.name}</h1>
+          <span 
             className="resource-type-badge"
             style={{ 
               backgroundColor: resourceType.bgColor,
@@ -184,192 +136,140 @@ const ImprovedResourceDetailPage = () => {
             }}
           >
             {resourceType.name}
-          </div>
-        </header>
-        
+          </span>
+        </div>
+
         <div className="detail-content">
           <div className="detail-two-columns">
-            <div className="detail-column">
-              <section className="detail-section">
-                <h2>Location</h2>
-                
-                {hasValidCoordinates ? (
-                  <div className="map-container">
-                    <MapContainer 
-                      center={[parseFloat(latitude), parseFloat(longitude)]} 
-                      zoom={15} 
-                      scrollWheelZoom={false}
-                      style={{ height: '300px', width: '100%' }}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <Marker position={[parseFloat(latitude), parseFloat(longitude)]}>
-                        <Popup>
-                          <strong>{name}</strong><br />
-                          {address_line1}
-                        </Popup>
-                      </Marker>
-                    </MapContainer>
-                  </div>
-                ) : (
-                  <div className="map-placeholder">
-                    <FaMapMarkerAlt />
-                    <p>Map location not available</p>
-                  </div>
-                )}
-                
-                <div className="location-details">
+            <div className="location-details">
+              <div className="detail-section">
+                <h2>Contact Information</h2>
+                {resource.address_line1 && (
                   <div className="detail-item">
                     <FaMapMarkerAlt className="detail-icon" />
                     <div className="detail-text">
-                      <p>{address_line1}</p>
-                      {address_line2 && <p>{address_line2}</p>}
-                      <p>{city}, {state} {zip}</p>
+                      <p>
+                        {resource.address_line1}
+                        {resource.address_line2 && `, ${resource.address_line2}`}
+                        {resource.city && `, ${resource.city}`}
+                        {resource.state && `, ${resource.state}`}
+                        {resource.zip && ` ${resource.zip}`}
+                      </p>
                     </div>
                   </div>
-                  
-                  <a 
-                    href={googleMapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="directions-button"
-                  >
-                    <FaDirections /> Get Directions
-                  </a>
-                </div>
-              </section>
-            </div>
-            
-            <div className="detail-column">
-              <section className="detail-section">
-                <h2>Contact Information</h2>
+                )}
                 
-                <div className="contact-details">
-                  {phone && (
-                    <div className="detail-item">
-                      <FaPhone className="detail-icon" />
-                      <div className="detail-text">
-                        <a href={`tel:${phone.replace(/\D/g, '')}`}>
-                          {formatPhone(phone)}
-                        </a>
-                      </div>
+                {resource.phone && (
+                  <div className="detail-item">
+                    <FaPhone className="detail-icon" />
+                    <div className="detail-text">
+                      <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
+                        {formatPhone(resource.phone)}
+                      </a>
                     </div>
-                  )}
-                  
-                  {website && (
-                    <div className="detail-item">
-                      <FaGlobe className="detail-icon" />
-                      <div className="detail-text">
-                        <a 
-                          href={website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          {website.replace(/(^\w+:|^)\/\//, '').replace(/\/$/, '')}
-                        </a>
-                      </div>
+                  </div>
+                )}
+                
+                {resource.website && (
+                  <div className="detail-item">
+                    <FaGlobe className="detail-icon" />
+                    <div className="detail-text">
+                      <a 
+                        href={resource.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        Visit Website 
+                        <FaExternalLinkAlt className="external-link-icon" />
+                      </a>
                     </div>
-                  )}
-                  
-                  {email && (
-                    <div className="detail-item">
-                      <FaEnvelope className="detail-icon" />
-                      <div className="detail-text">
-                        <a href={`mailto:${email}`}>{email}</a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-              
-              {hours && (
-                <section className="detail-section">
-                  <h2>Hours</h2>
+                  </div>
+                )}
+                
+                {resource.hours && (
                   <div className="detail-item">
                     <FaClock className="detail-icon" />
                     <div className="detail-text">
-                      <p>{hours}</p>
+                      <p>{resource.hours}</p>
                     </div>
                   </div>
-                </section>
+                )}
+              </div>
+
+              {/* Resource Features */}
+              <div className="features-section">
+                <div className="features-grid">
+                  {resource.accepts_uninsured && (
+                    <div className={`feature-card ${resource.accepts_uninsured ? 'active' : 'inactive'}`}>
+                      <FaCheckCircle className={`feature-icon ${resource.accepts_uninsured ? 'active' : 'inactive'}`} />
+                      <h3>Accepts Uninsured</h3>
+                      <p>This resource is available to patients without insurance.</p>
+                    </div>
+                  )}
+                  
+                  {resource.sliding_scale && (
+                    <div className={`feature-card ${resource.sliding_scale ? 'active' : 'inactive'}`}>
+                      <FaCheckCircle className={`feature-icon ${resource.sliding_scale ? 'active' : 'inactive'}`} />
+                      <h3>Sliding Scale Fees</h3>
+                      <p>Offers flexible pricing based on income.</p>
+                    </div>
+                  )}
+                  
+                  {resource.free_care_available && (
+                    <div className={`feature-card ${resource.free_care_available ? 'active' : 'inactive'}`}>
+                      <FaCheckCircle className={`feature-icon ${resource.free_care_available ? 'active' : 'inactive'}`} />
+                      <h3>Free Care Available</h3>
+                      <p>Provides free services to eligible patients.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              {resource.notes && (
+                <div className="notes-container">
+                  <h2>Additional Information</h2>
+                  <p>{resource.notes}</p>
+                </div>
+              )}
+
+              {/* Transit Routes */}
+              <div className="detail-section">
+                <h2>Transit Options</h2>
+                <TransitRoutesTab resource={resource} />
+              </div>
+            </div>
+
+            {/* Map Column */}
+            <div className="map-container">
+              {resource.latitude && resource.longitude ? (
+                <MapView resources={[resource]} />
+              ) : (
+                <div className="map-placeholder">
+                  <FaMapMarkerAlt />
+                  <p>Location data not available for this resource.</p>
+                </div>
               )}
             </div>
           </div>
-          
-          <section className="detail-section features-section">
-            <h2>Features</h2>
-            <div className="features-grid">
-              <div className={`feature-card ${accepts_uninsured ? 'active' : 'inactive'}`}>
-                {accepts_uninsured ? (
-                  <FaCheckCircle className="feature-icon active" />
-                ) : (
-                  <FaTimesCircle className="feature-icon inactive" />
-                )}
-                <h3>Accepts Uninsured Patients</h3>
-                <p>{accepts_uninsured ? 
-                  'This provider accepts patients without insurance.' : 
-                  'This provider may not accept patients without insurance.'}</p>
-              </div>
-              
-              <div className={`feature-card ${sliding_scale ? 'active' : 'inactive'}`}>
-                {sliding_scale ? (
-                  <FaCheckCircle className="feature-icon active" />
-                ) : (
-                  <FaTimesCircle className="feature-icon inactive" />
-                )}
-                <h3>Sliding Scale Fees</h3>
-                <p>{sliding_scale ? 
-                  'This provider offers sliding scale fees based on income.' : 
-                  'This provider may not offer sliding scale fees.'}</p>
-              </div>
-              
-              <div className={`feature-card ${free_care_available ? 'active' : 'inactive'}`}>
-                {free_care_available ? (
-                  <FaCheckCircle className="feature-icon active" />
-                ) : (
-                  <FaTimesCircle className="feature-icon inactive" />
-                )}
-                <h3>Free Care Available</h3>
-                <p>{free_care_available ? 
-                  'This provider offers free care to qualifying patients.' : 
-                  'This provider may not offer free care options.'}</p>
-              </div>
-            </div>
-          </section>
-          
-          {(eligibility_criteria || notes) && (
-            <section className="detail-section">
-              {eligibility_criteria && (
-                <div className="eligibility-container">
-                  <h2>Eligibility</h2>
-                  <p>{eligibility_criteria}</p>
-                </div>
-              )}
-              
-              {notes && (
-                <div className="notes-container">
-                  <h2>Additional Information</h2>
-                  <p>{notes}</p>
-                </div>
-              )}
-            </section>
-          )}
-          
-          <section className="detail-section action-section">
+
+          {/* Action Section */}
+          <div className="action-section">
             <div className="action-buttons">
-              {phone && (
-                <a href={`tel:${phone.replace(/\D/g, '')}`} className="action-button phone">
+              {resource.phone && (
+                <a 
+                  href={`tel:${resource.phone.replace(/\D/g, '')}`} 
+                  className="action-button phone"
+                >
                   <FaPhone /> Call
                 </a>
               )}
               
-              {website && (
+              {resource.website && (
                 <a 
-                  href={website} 
+                  href={resource.website} 
                   target="_blank" 
-                  rel="noopener noreferrer" 
+                  rel="noopener noreferrer"
                   className="action-button website"
                 >
                   <FaGlobe /> Visit Website
@@ -377,13 +277,13 @@ const ImprovedResourceDetailPage = () => {
               )}
               
               <button 
-                onClick={() => window.print()} 
                 className="action-button print"
+                onClick={() => window.print()}
               >
-                <FaPrint /> Print Information
+                Print Details
               </button>
             </div>
-          </section>
+          </div>
         </div>
       </div>
     </div>
