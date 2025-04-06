@@ -1,4 +1,4 @@
-// client/src/pages/ImprovedResourceDetailPage.js
+// pages/ImprovedResourceDetailPage.js
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -11,7 +11,8 @@ import {
   FaTimesCircle,
   FaArrowLeft,
   FaDirections,
-  FaPrint
+  FaPrint,
+  FaEnvelope 
 } from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
 import '../styles/ImprovedResourceDetailPage.css';
@@ -49,6 +50,14 @@ const ImprovedResourceDetailPage = () => {
         }
         
         const data = await response.json();
+        
+        // Clean up any AI analysis references from notes
+        if (data.notes) {
+          data.notes = data.notes
+            .replace(/\s?\(Data enriched via AI.*?\)/g, '')
+            .replace(/\s?\(Data enrichment failed\)/g, '');
+        }
+        
         setResource(data);
         setLoading(false);
       } catch (error) {
@@ -115,19 +124,23 @@ const ImprovedResourceDetailPage = () => {
     longitude
   } = resource;
 
-  // Resource type mapping
+  // Resource type mapping with colors
   const resourceTypes = {
-    1: 'Health Center',
-    2: 'Hospital',
-    3: 'Pharmacy',
-    4: 'Dental Clinic',
-    5: 'Mental Health',
-    6: 'Transportation',
-    7: 'Social Services',
-    8: 'Women\'s Health',
-    9: 'Specialty Care',
-    10: 'Urgent Care'
+    1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe' },
+    2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6' },
+    3: { name: 'Pharmacy', color: '#34A853', bgColor: '#e6f4ea' },
+    4: { name: 'Dental Care', color: '#FBBC05', bgColor: '#fef7e0' },
+    5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5' },
+    6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6' },
+    7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa' },
+    8: { name: 'Women\'s Health', color: '#EC407A', bgColor: '#fce4ec' },
+    9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7' },
+    10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7' }
   };
+
+  // Get resource type or default
+  const resourceType = resourceTypes[resource_type_id] || 
+    { name: 'Medical Resource', color: '#757575', bgColor: '#f5f5f5' };
 
   // Format address for Google Maps
   const formattedAddress = encodeURIComponent(
@@ -150,8 +163,12 @@ const ImprovedResourceDetailPage = () => {
     return phoneNumber;
   };
 
+  // Check if we have valid coordinates
+  const hasValidCoordinates = latitude && longitude && 
+    !isNaN(parseFloat(latitude)) && !isNaN(parseFloat(longitude));
+
   return (
-    <div className="improved-detail-page">
+    <div className="resource-detail-page">
       <Link to="/search" className="back-link">
         <FaArrowLeft /> Back to Search Results
       </Link>
@@ -159,177 +176,214 @@ const ImprovedResourceDetailPage = () => {
       <div className="detail-container">
         <header className="detail-header">
           <h1>{name}</h1>
-          <div className="detail-type">
-            {resourceTypes[resource_type_id] || 'Medical Resource'}
+          <div 
+            className="resource-type-badge"
+            style={{ 
+              backgroundColor: resourceType.bgColor,
+              color: resourceType.color
+            }}
+          >
+            {resourceType.name}
           </div>
         </header>
         
         <div className="detail-content">
-          <div className="detail-main-grid">
-            <div className="detail-location-card">
-              <h2>Location</h2>
-              
-              {(latitude && longitude) ? (
-                <div className="detail-map-container">
-                  <MapContainer 
-                    center={[latitude, longitude]} 
-                    zoom={15} 
-                    scrollWheelZoom={false}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <Marker position={[latitude, longitude]}>
-                      <Popup>
-                        <strong>{name}</strong><br />
-                        {address_line1}
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
-                </div>
-              ) : (
-                <div className="map-placeholder">
-                  <FaMapMarkerAlt />
-                  <p>Map location not available</p>
-                </div>
-              )}
-              
-              <div className="location-details">
-                <div className="address-block">
-                  <FaMapMarkerAlt className="detail-icon" />
-                  <div>
-                    <p>{address_line1}</p>
-                    {address_line2 && <p>{address_line2}</p>}
-                    <p>{city}, {state} {zip}</p>
-                  </div>
-                </div>
+          <div className="detail-two-columns">
+            <div className="detail-column">
+              <section className="detail-section">
+                <h2>Location</h2>
                 
-                <a 
-                  href={googleMapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="directions-link"
-                >
-                  <FaDirections /> Get Directions
-                </a>
-              </div>
+                {hasValidCoordinates ? (
+                  <div className="map-container">
+                    <MapContainer 
+                      center={[parseFloat(latitude), parseFloat(longitude)]} 
+                      zoom={15} 
+                      scrollWheelZoom={false}
+                      style={{ height: '300px', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[parseFloat(latitude), parseFloat(longitude)]}>
+                        <Popup>
+                          <strong>{name}</strong><br />
+                          {address_line1}
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                  </div>
+                ) : (
+                  <div className="map-placeholder">
+                    <FaMapMarkerAlt />
+                    <p>Map location not available</p>
+                  </div>
+                )}
+                
+                <div className="location-details">
+                  <div className="detail-item">
+                    <FaMapMarkerAlt className="detail-icon" />
+                    <div className="detail-text">
+                      <p>{address_line1}</p>
+                      {address_line2 && <p>{address_line2}</p>}
+                      <p>{city}, {state} {zip}</p>
+                    </div>
+                  </div>
+                  
+                  <a 
+                    href={googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="directions-button"
+                  >
+                    <FaDirections /> Get Directions
+                  </a>
+                </div>
+              </section>
             </div>
             
-            <div className="detail-info-card">
-              <h2>Contact Information</h2>
-              
-              <div className="info-block">
-                {phone && (
-                  <div className="contact-row">
-                    <FaPhone className="detail-icon" />
-                    <a href={`tel:${phone.replace(/\D/g, '')}`}>{formatPhone(phone)}</a>
-                  </div>
-                )}
+            <div className="detail-column">
+              <section className="detail-section">
+                <h2>Contact Information</h2>
                 
-                {website && (
-                  <div className="contact-row">
-                    <FaGlobe className="detail-icon" />
-                    <a href={website} target="_blank" rel="noopener noreferrer">
-                      {website.replace(/(^\w+:|^)\/\//, '').replace(/\/$/, '')}
-                    </a>
-                  </div>
-                )}
-                
-                {email && (
-                  <div className="contact-row">
-                    <FaEnvelope className="detail-icon" />
-                    <a href={`mailto:${email}`}>{email}</a>
-                  </div>
-                )}
-              </div>
+                <div className="contact-details">
+                  {phone && (
+                    <div className="detail-item">
+                      <FaPhone className="detail-icon" />
+                      <div className="detail-text">
+                        <a href={`tel:${phone.replace(/\D/g, '')}`}>
+                          {formatPhone(phone)}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {website && (
+                    <div className="detail-item">
+                      <FaGlobe className="detail-icon" />
+                      <div className="detail-text">
+                        <a 
+                          href={website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          {website.replace(/(^\w+:|^)\/\//, '').replace(/\/$/, '')}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {email && (
+                    <div className="detail-item">
+                      <FaEnvelope className="detail-icon" />
+                      <div className="detail-text">
+                        <a href={`mailto:${email}`}>{email}</a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
               
               {hours && (
-                <div className="hours-block">
-                  <h3>
-                    <FaClock className="detail-icon small" /> Hours
-                  </h3>
-                  <p>{hours}</p>
-                </div>
+                <section className="detail-section">
+                  <h2>Hours</h2>
+                  <div className="detail-item">
+                    <FaClock className="detail-icon" />
+                    <div className="detail-text">
+                      <p>{hours}</p>
+                    </div>
+                  </div>
+                </section>
               )}
             </div>
           </div>
           
-          <div className="detail-features">
-            <div className="feature-card">
-              <div className={`feature-item ${accepts_uninsured ? 'available' : 'unavailable'}`}>
+          <section className="detail-section features-section">
+            <h2>Features</h2>
+            <div className="features-grid">
+              <div className={`feature-card ${accepts_uninsured ? 'active' : 'inactive'}`}>
                 {accepts_uninsured ? (
-                  <FaCheckCircle className="feature-icon check" />
+                  <FaCheckCircle className="feature-icon active" />
                 ) : (
-                  <FaTimesCircle className="feature-icon times" />
+                  <FaTimesCircle className="feature-icon inactive" />
                 )}
-                <span>Accepts Uninsured Patients</span>
+                <h3>Accepts Uninsured Patients</h3>
+                <p>{accepts_uninsured ? 
+                  'This provider accepts patients without insurance.' : 
+                  'This provider may not accept patients without insurance.'}</p>
               </div>
               
-              <div className={`feature-item ${sliding_scale ? 'available' : 'unavailable'}`}>
+              <div className={`feature-card ${sliding_scale ? 'active' : 'inactive'}`}>
                 {sliding_scale ? (
-                  <FaCheckCircle className="feature-icon check" />
+                  <FaCheckCircle className="feature-icon active" />
                 ) : (
-                  <FaTimesCircle className="feature-icon times" />
+                  <FaTimesCircle className="feature-icon inactive" />
                 )}
-                <span>Sliding Scale Fees</span>
+                <h3>Sliding Scale Fees</h3>
+                <p>{sliding_scale ? 
+                  'This provider offers sliding scale fees based on income.' : 
+                  'This provider may not offer sliding scale fees.'}</p>
               </div>
               
-              <div className={`feature-item ${free_care_available ? 'available' : 'unavailable'}`}>
+              <div className={`feature-card ${free_care_available ? 'active' : 'inactive'}`}>
                 {free_care_available ? (
-                  <FaCheckCircle className="feature-icon check" />
+                  <FaCheckCircle className="feature-icon active" />
                 ) : (
-                  <FaTimesCircle className="feature-icon times" />
+                  <FaTimesCircle className="feature-icon inactive" />
                 )}
-                <span>Free Care Available</span>
+                <h3>Free Care Available</h3>
+                <p>{free_care_available ? 
+                  'This provider offers free care to qualifying patients.' : 
+                  'This provider may not offer free care options.'}</p>
               </div>
             </div>
-          </div>
+          </section>
           
           {(eligibility_criteria || notes) && (
-            <div className="detail-additional-info">
+            <section className="detail-section">
               {eligibility_criteria && (
-                <div className="additional-block">
+                <div className="eligibility-container">
                   <h2>Eligibility</h2>
                   <p>{eligibility_criteria}</p>
                 </div>
               )}
               
               {notes && (
-                <div className="additional-block">
+                <div className="notes-container">
                   <h2>Additional Information</h2>
-                  <p>{notes.replace(' (Data enriched via AI analysis)', '')}</p>
+                  <p>{notes}</p>
                 </div>
               )}
-            </div>
+            </section>
           )}
           
-          <div className="detail-actions">
-            {phone && (
-              <a href={`tel:${phone.replace(/\D/g, '')}`} className="action-button call">
-                <FaPhone /> Call
-              </a>
-            )}
-            
-            {website && (
-              <a 
-                href={website} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="action-button website"
+          <section className="detail-section action-section">
+            <div className="action-buttons">
+              {phone && (
+                <a href={`tel:${phone.replace(/\D/g, '')}`} className="action-button phone">
+                  <FaPhone /> Call
+                </a>
+              )}
+              
+              {website && (
+                <a 
+                  href={website} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="action-button website"
+                >
+                  <FaGlobe /> Visit Website
+                </a>
+              )}
+              
+              <button 
+                onClick={() => window.print()} 
+                className="action-button print"
               >
-                <FaGlobe /> Visit Website
-              </a>
-            )}
-            
-            <button 
-              onClick={() => window.print()} 
-              className="action-button print"
-            >
-              <FaPrint /> Print Information
-            </button>
-          </div>
+                <FaPrint /> Print Information
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>

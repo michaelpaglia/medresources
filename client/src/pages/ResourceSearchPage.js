@@ -1,98 +1,377 @@
-// client/src/pages/ResourceSearchPage.js
-
+// src/pages/ResourceSearchPage.js
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-// Import the new components
-import EnhancedSearchBar from '../components/EnhancedSearchBar';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { 
+  FaSearch, 
+  FaMapMarkedAlt, 
+  FaList, 
+  FaFilter, 
+  FaChevronDown,
+  FaChevronUp 
+} from 'react-icons/fa';
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
-import LocationSearch from '../components/LocationSearch';
 import MapView from '../components/MapView';
-import '../styles/ResourceSearchPage.css';
+import '../styles/ImprovedResourceSearchPage.css';
 
 const ResourceSearchPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [filteredResources, setFilteredResources] = useState([]);
   const [viewMode, setViewMode] = useState('list');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Search states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [radius, setRadius] = useState('10');
+  
+  // Filter states
   const [filters, setFilters] = useState({
-    searchTerm: '',
     resourceType: '',
     acceptsUninsured: false,
     hasSlidingScale: false,
     hasFreecare: false
   });
   
-  const location = useLocation();
-  
-  // Parse query parameters and rest of existing code...
+  // Resource types mapping
+  const resourceTypes = [
+    { id: '', name: 'All Resource Types' },
+    { id: '1', name: 'Health Centers' },
+    { id: '2', name: 'Hospitals' },
+    { id: '3', name: 'Pharmacies' },
+    { id: '4', name: 'Dental Care' },
+    { id: '5', name: 'Mental Health' },
+    { id: '8', name: 'Women\'s Health' },
+    { id: '6', name: 'Transportation' },
+    { id: '10', name: 'Urgent Care' }
+  ];
 
-  // Use the new EnhancedSearchBar for searching
-  const handleSearch = (searchTerm) => {
+  // Parse query parameters and fetch initial data
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const queryParam = searchParams.get('query') || '';
+    const typeParam = searchParams.get('type') || '';
+    
+    setSearchTerm(queryParam);
     setFilters(prev => ({
       ...prev,
-      searchTerm
+      resourceType: typeParam
     }));
+    
+    fetchResources(queryParam, typeParam);
+  }, [location.search]);
+
+  // Fetch resources from API
+  const fetchResources = (query = '', type = '') => {
+    setIsLoading(true);
+    
+    // Build the API URL with query parameters
+    let url = '/api/resources';
+    const params = [];
+    
+    if (query) params.push(`query=${encodeURIComponent(query)}`);
+    if (type) params.push(`resourceType=${encodeURIComponent(type)}`);
+    
+    if (params.length > 0) {
+      url += '/search?' + params.join('&');
+    }
+    
+    fetch(url)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch resources');
+        return response.json();
+      })
+      .then(data => {
+        // Clean up any AI analysis mentions from the notes
+        const cleanedData = data.map(resource => {
+          if (resource.notes) {
+            resource.notes = resource.notes
+              .replace(/\s?\(Data enriched via AI.*?\)/g, '')
+              .replace(/\s?\(Data enrichment failed\)/g, '');
+          }
+          return resource;
+        });
+        
+        setResources(cleanedData);
+        setFilteredResources(cleanedData);
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching resources:', error);
+        setError('Failed to load resources. Please try again later.');
+        setIsLoading(false);
+      });
   };
 
+  // Handle text search
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    
+    // Update URL with search parameters
+    const params = new URLSearchParams();
+    if (searchTerm) params.set('query', searchTerm);
+    if (filters.resourceType) params.set('type', filters.resourceType);
+    
+    navigate({
+      pathname: '/search',
+      search: params.toString()
+    });
+    
+    // Fetch resources with the new search term
+    fetchResources(searchTerm, filters.resourceType);
+  };
+
+  // Handle location-based search
+  const handleLocationSearch = (e) => {
+    e.preventDefault();
+    
+    if (!zipCode) return;
+    
+    setIsLoading(true);
+    fetch(`/api/resources/location?zipCode=${zipCode}&radius=${radius}`)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch resources for this location');
+        return response.json();
+      })
+      .then(data => {
+        // Clean up any AI analysis mentions
+        const cleanedData = data.map(resource => {
+          if (resource.notes) {
+            resource.notes = resource.notes
+              .replace(/\s?\(Data enriched via AI.*?\)/g, '')
+              .replace(/\s?\(Data enrichment failed\)/g, '');
+          }
+          return resource;
+        });
+        
+        setResources(cleanedData);
+        setFilteredResources(cleanedData);
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching resources by location:', error);
+        setError('Failed to load resources for this location. Please try again.');
+        setIsLoading(false);
+      });
+  };
+
+  // Apply filters to resources
+  const applyFilters = () => {
+    const filtered = resources.filter(resource => {
+      // Resource type filter
+      if (filters.resourceType && resource.resource_type_id.toString() !== filters.resourceType) {
+        return false;
+      }
+      
+      // Accepts uninsured filter
+      if (filters.acceptsUninsured && !resource.accepts_uninsured) {
+        return false;
+      }
+      
+      // Sliding scale filter
+      if (filters.hasSlidingScale && !resource.sliding_scale) {
+        return false;
+      }
+      
+      // Free care filter
+      if (filters.hasFreecare && !resource.free_care_available) {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    setFilteredResources(filtered);
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => {
+      const newFilters = { ...prev, [field]: value };
+      return newFilters;
+    });
+  };
+
+  // Apply filters when filters change
+  useEffect(() => {
+    applyFilters();
+  }, [filters]);
+
   return (
-    <div className="resource-search-page">
+    <div className="improved-search-page">
       <h1>Find Medical Resources in Troy, NY</h1>
       
-      {/* Use the new search component instead */}
-      <EnhancedSearchBar 
-        onSearch={handleSearch} 
-        placeholder="Search by keyword (e.g., dental, insulin, transportation)"
-      />
-      
-      {/* Location search component */}
-      <LocationSearch onSearch={searchByLocation} />
-      
-      {/* Keep ResourceFilter for now */}
-      <ResourceFilter 
-        filters={filters} 
-        onFilterChange={handleFilterChange} 
-      />
-      
-      {/* View toggle (list/map) */}
-      <div className="view-toggle">
-        <button 
-          className={viewMode === 'list' ? 'active' : ''} 
-          onClick={() => setViewMode('list')}
-        >
-          List View
-        </button>
-        <button 
-          className={viewMode === 'map' ? 'active' : ''} 
-          onClick={() => setViewMode('map')}
-        >
-          Map View
-        </button>
-      </div>
-      
-      {isLoading ? (
-        <div className="loading">Loading resources...</div>
-      ) : error ? (
-        <div className="error-message">{error}</div>
-      ) : (
-        <div className="resource-results">
-          {filteredResources.length === 0 ? (
-            <p className="no-results">No resources match your search criteria. Try adjusting your filters.</p>
-          ) : viewMode === 'list' ? (
-            <div className="resource-list">
-              {filteredResources.map(resource => (
-                // Use the improved resource card
-                <ImprovedResourceCard 
-                  key={resource.id} 
-                  resource={resource} 
+      <div className="unified-search-container">
+        <div className="search-tabs">
+          <button 
+            className={!showFilters ? "active-tab" : ""} 
+            onClick={() => setShowFilters(false)}
+          >
+            Search by Keyword
+          </button>
+          <button 
+            className={showFilters ? "active-tab" : ""} 
+            onClick={() => setShowFilters(true)}
+          >
+            Advanced Search
+          </button>
+        </div>
+        
+        <div className="search-content">
+          {!showFilters ? (
+            <form onSubmit={handleSearchSubmit} className="keyword-search">
+              <div className="search-input-container">
+                <FaSearch className="search-icon" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by keyword (e.g., dental, insulin, transportation)"
+                  className="search-input"
                 />
-              ))}
-            </div>
+              </div>
+              <button type="submit" className="search-button">
+                <FaSearch /> Search
+              </button>
+            </form>
           ) : (
-            <MapView resources={filteredResources} />
+            <div className="advanced-search">
+              <div className="filter-grid">
+                <div className="filter-column">
+                  <label htmlFor="resourceType">Type of Resource</label>
+                  <select
+                    id="resourceType"
+                    value={filters.resourceType}
+                    onChange={(e) => handleFilterChange('resourceType', e.target.value)}
+                  >
+                    {resourceTypes.map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="filter-column">
+                  <h3>Provider Features</h3>
+                  <div className="checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={filters.acceptsUninsured}
+                        onChange={(e) => handleFilterChange('acceptsUninsured', e.target.checked)}
+                      />
+                      Accepts Uninsured
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={filters.hasSlidingScale}
+                        onChange={(e) => handleFilterChange('hasSlidingScale', e.target.checked)}
+                      />
+                      Sliding Scale Fees
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={filters.hasFreecare}
+                        onChange={(e) => handleFilterChange('hasFreecare', e.target.checked)}
+                      />
+                      Free Care Available
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="filter-column">
+                  <form onSubmit={handleLocationSearch} className="zip-search">
+                    <div className="zip-input-group">
+                      <label htmlFor="zipCode">Find by ZIP Code</label>
+                      <input
+                        type="text"
+                        id="zipCode"
+                        value={zipCode}
+                        onChange={(e) => setZipCode(e.target.value)}
+                        placeholder="e.g., 12180"
+                        pattern="[0-9]{5}"
+                        maxLength="5"
+                      />
+                    </div>
+                    <div className="radius-group">
+                      <label htmlFor="radius">Radius</label>
+                      <select
+                        id="radius"
+                        value={radius}
+                        onChange={(e) => setRadius(e.target.value)}
+                      >
+                        <option value="5">5 miles</option>
+                        <option value="10">10 miles</option>
+                        <option value="15">15 miles</option>
+                        <option value="25">25 miles</option>
+                      </select>
+                    </div>
+                    <button type="submit" className="location-button">
+                      Find Resources
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
           )}
         </div>
-      )}
+      </div>
+      
+      <div className="results-container">
+        <div className="results-header">
+          <div className="results-count">
+            {filteredResources.length} resources found
+          </div>
+          <div className="view-toggle">
+            <button 
+              className={viewMode === 'list' ? 'active' : ''}
+              onClick={() => setViewMode('list')}
+              aria-label="List view"
+            >
+              <FaList /> List
+            </button>
+            <button 
+              className={viewMode === 'map' ? 'active' : ''}
+              onClick={() => setViewMode('map')}
+              aria-label="Map view"
+            >
+              <FaMapMarkedAlt /> Map
+            </button>
+          </div>
+        </div>
+        
+        {isLoading ? (
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Loading resources...</p>
+          </div>
+        ) : error ? (
+          <div className="error-message">
+            <p>{error}</p>
+          </div>
+        ) : filteredResources.length === 0 ? (
+          <div className="no-results">
+            <h3>No resources found</h3>
+            <p>Try adjusting your search or filters to find more resources.</p>
+          </div>
+        ) : viewMode === 'list' ? (
+          <div className="resource-grid">
+            {filteredResources.map(resource => (
+              <ImprovedResourceCard key={resource.id} resource={resource} />
+            ))}
+          </div>
+        ) : (
+          <div className="map-container">
+            <MapView resources={filteredResources} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

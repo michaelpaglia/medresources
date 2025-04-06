@@ -21,7 +21,6 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/search" element={<ResourceSearchPage />} />
-            {/* Use the improved detail page */}
             <Route path="/resource/:id" element={<ImprovedResourceDetailPage />} />
             <Route path="/eligibility" element={<EligibilityScreener />} />
             <Route path="/about" element={<AboutPage />} />

@@ -1,7 +1,12 @@
-// client/src/components/ImprovedResourceCard.js
+// components/ImprovedResourceCard.js
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaMapMarkerAlt, FaPhone, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { 
+  FaMapMarkerAlt, 
+  FaPhone, 
+  FaClock, 
+  FaCheckCircle 
+} from 'react-icons/fa';
 import '../styles/ImprovedResourceCard.css';
 
 const ImprovedResourceCard = ({ resource }) => {
@@ -22,22 +27,25 @@ const ImprovedResourceCard = ({ resource }) => {
     notes
   } = resource;
 
-  // We're removing the display of resource type as per user request
-  // But keeping the mapping for other uses if needed
+  // Resource type mapping
   const resourceTypes = {
-    1: 'Health Center',
-    2: 'Hospital',
-    3: 'Pharmacy',
-    4: 'Dental Clinic',
-    5: 'Mental Health',
-    6: 'Transportation',
-    7: 'Social Services',
-    8: 'Women\'s Health',
-    9: 'Specialty Care',
-    10: 'Urgent Care'
+    1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe' },
+    2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6' },
+    3: { name: 'Pharmacy', color: '#34A853', bgColor: '#e6f4ea' },
+    4: { name: 'Dental Care', color: '#FBBC05', bgColor: '#fef7e0' },
+    5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5' },
+    6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6' },
+    7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa' },
+    8: { name: 'Women\'s Health', color: '#EC407A', bgColor: '#fce4ec' },
+    9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7' },
+    10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7' }
   };
 
-  // Function to format phone number nicely
+  // Get resource type style or use default
+  const resourceType = resourceTypes[resource_type_id] || 
+    { name: 'Medical Resource', color: '#757575', bgColor: '#f5f5f5' };
+
+  // Format phone number for display
   const formatPhone = (phoneNumber) => {
     if (!phoneNumber) return '';
     
@@ -52,69 +60,93 @@ const ImprovedResourceCard = ({ resource }) => {
     return phoneNumber;
   };
 
+  // Truncate long text for card display
+  const truncateText = (text, maxLength) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    
+    return text.substring(0, maxLength) + '...';
+  };
+
   return (
-    <div className="improved-resource-card">
-      <div className="resource-card-header">
-        <h2>{name}</h2>
+    <div className="resource-card">
+      <div className="card-header">
+        <h2 className="card-title">{name}</h2>
+        <span 
+          className="resource-type-tag"
+          style={{ 
+            backgroundColor: resourceType.bgColor,
+            color: resourceType.color
+          }}
+        >
+          {resourceType.name}
+        </span>
       </div>
       
-      <div className="resource-card-features">
+      <div className="card-features">
         {accepts_uninsured && (
-          <span className="feature-tag">
-            <FaCheckCircle size={12} className="feature-icon" />
-            Accepts Uninsured
-          </span>
+          <div className="feature-badge">
+            <FaCheckCircle />
+            <span>Accepts Uninsured</span>
+          </div>
         )}
+        
         {sliding_scale && (
-          <span className="feature-tag">
-            <FaCheckCircle size={12} className="feature-icon" />
-            Sliding Scale
-          </span>
+          <div className="feature-badge">
+            <FaCheckCircle />
+            <span>Sliding Scale</span>
+          </div>
         )}
+        
         {free_care_available && (
-          <span className="feature-tag">
-            <FaCheckCircle size={12} className="feature-icon" />
-            Free Care
-          </span>
+          <div className="feature-badge">
+            <FaCheckCircle />
+            <span>Free Care</span>
+          </div>
         )}
       </div>
       
-      <div className="resource-card-content">
-        <div className="content-section">
-          <div className="content-row">
-            <FaMapMarkerAlt className="content-icon" />
-            <p>{address_line1}<br />{city}, {state} {zip}</p>
-          </div>
-          
-          {phone && (
-            <div className="content-row">
-              <FaPhone className="content-icon" />
-              <p><a href={`tel:${phone.replace(/\D/g, '')}`}>{formatPhone(phone)}</a></p>
-            </div>
-          )}
-          
-          {hours && (
-            <div className="content-row">
-              <FaClock className="content-icon" />
-              <p>{hours}</p>
-            </div>
-          )}
+      <div className="card-content">
+        <div className="info-row">
+          <FaMapMarkerAlt className="info-icon" />
+          <span>{address_line1}, {city}, {state} {zip}</span>
         </div>
         
+        {phone && (
+          <div className="info-row">
+            <FaPhone className="info-icon" />
+            <a href={`tel:${phone.replace(/\D/g, '')}`}>
+              {formatPhone(phone)}
+            </a>
+          </div>
+        )}
+        
+        {hours && (
+          <div className="info-row">
+            <FaClock className="info-icon" />
+            <span>{truncateText(hours, 60)}</span>
+          </div>
+        )}
+        
         {notes && (
-          <div className="content-section">
-            <p className="resource-notes">{notes}</p>
+          <div className="card-notes">
+            {truncateText(notes, 100)}
           </div>
         )}
       </div>
       
-      <div className="resource-card-actions">
-        <Link to={`/resource/${id}`} className="btn-view-details">
+      <div className="card-actions">
+        <Link to={`/resource/${id}`} className="view-details-button">
           View Details
         </Link>
         
         {website && (
-          <a href={website} className="btn-website" target="_blank" rel="noopener noreferrer">
+          <a 
+            href={website} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="website-button"
+          >
             Visit Website
           </a>
         )}

@@ -1,19 +1,19 @@
-/* client/src/styles/ImprovedResourceDetailPage.css */
+/* styles/ImprovedResourceDetailPage.css */
 
-.improved-detail-page {
+.resource-detail-page {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 24px 16px;
+    padding: 24px;
   }
   
   .back-link {
     display: inline-flex;
     align-items: center;
     color: #1a73e8;
+    text-decoration: none;
     font-size: 14px;
     font-weight: 500;
     margin-bottom: 24px;
-    text-decoration: none;
   }
   
   .back-link svg {
@@ -25,7 +25,7 @@
   }
   
   .detail-container {
-    background-color: #fff;
+    background-color: white;
     border-radius: 8px;
     box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
     overflow: hidden;
@@ -33,20 +33,19 @@
   
   .detail-header {
     padding: 24px;
-    border-bottom: 1px solid #f1f3f4;
+    border-bottom: 1px solid #dadce0;
+    background-color: #f8f9fa;
   }
   
   .detail-header h1 {
-    margin: 0 0 8px 0;
+    margin: 0 0 16px 0;
     font-size: 24px;
     font-weight: 500;
     color: #202124;
   }
   
-  .detail-type {
+  .resource-type-badge {
     display: inline-block;
-    background-color: #e8f0fe;
-    color: #1967d2;
     padding: 4px 12px;
     border-radius: 16px;
     font-size: 14px;
@@ -57,215 +56,204 @@
     padding: 24px;
   }
   
-  .detail-main-grid {
+  .detail-two-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 24px;
-    margin-bottom: 24px;
+    margin-bottom: 32px;
   }
   
-  .detail-location-card,
-  .detail-info-card {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    padding: 16px;
+  .detail-section {
+    margin-bottom: 32px;
   }
   
-  .detail-location-card h2,
-  .detail-info-card h2 {
-    margin-top: 0;
-    margin-bottom: 16px;
+  .detail-section:last-child {
+    margin-bottom: 0;
+  }
+  
+  .detail-section h2 {
+    margin: 0 0 16px 0;
     font-size: 18px;
     font-weight: 500;
     color: #202124;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dadce0;
   }
   
-  .detail-map-container {
-    height: 300px;
+  .map-container {
     border-radius: 8px;
     overflow: hidden;
     margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
   }
   
   .map-placeholder {
     height: 300px;
-    background-color: #f1f3f4;
-    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    background-color: #f1f3f4;
+    border-radius: 8px;
     margin-bottom: 16px;
-    color: #5f6368;
   }
   
   .map-placeholder svg {
     font-size: 48px;
+    color: #5f6368;
     margin-bottom: 16px;
   }
   
-  .location-details {
+  .map-placeholder p {
+    color: #5f6368;
+    font-size: 14px;
+  }
+  
+  .location-details,
+  .contact-details {
     display: flex;
     flex-direction: column;
     gap: 16px;
   }
   
-  .address-block {
+  .detail-item {
     display: flex;
     align-items: flex-start;
+    gap: 12px;
   }
   
   .detail-icon {
     color: #5f6368;
-    margin-right: 12px;
-    margin-top: 3px;
     flex-shrink: 0;
+    font-size: 18px;
+    margin-top: 2px;
   }
   
-  .detail-icon.small {
-    font-size: 16px;
+  .detail-text {
+    flex: 1;
   }
   
-  .address-block p {
+  .detail-text p {
     margin: 0 0 4px 0;
-    color: #3c4043;
     font-size: 14px;
     line-height: 1.5;
+    color: #202124;
   }
   
-  .directions-link {
-    display: inline-flex;
-    align-items: center;
-    color: #1a73e8;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-  }
-  
-  .directions-link svg {
-    margin-right: 8px;
-  }
-  
-  .directions-link:hover {
-    text-decoration: underline;
-  }
-  
-  .info-block {
-    margin-bottom: 24px;
-  }
-  
-  .contact-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  
-  .contact-row:last-child {
+  .detail-text p:last-child {
     margin-bottom: 0;
   }
   
-  .contact-row a {
+  .detail-text a {
     color: #1a73e8;
     text-decoration: none;
     font-size: 14px;
   }
   
-  .contact-row a:hover {
+  .detail-text a:hover {
     text-decoration: underline;
   }
   
-  .hours-block h3 {
-    margin: 0 0 8px 0;
+  .directions-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #1a73e8;
     font-size: 14px;
     font-weight: 500;
-    color: #3c4043;
-    display: flex;
-    align-items: center;
+    text-decoration: none;
+    padding: 8px 0;
   }
   
-  .hours-block p {
-    margin: 0;
-    font-size: 14px;
-    color: #3c4043;
-    line-height: 1.5;
+  .directions-button:hover {
+    text-decoration: underline;
   }
   
-  .detail-features {
-    margin-bottom: 24px;
+  .features-section {
+    background-color: #f8f9fa;
+    padding: 24px;
+    border-radius: 8px;
+    margin: 32px 0;
+  }
+  
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
   }
   
   .feature-card {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    background-color: #f8f9fa;
+    background-color: white;
     border-radius: 8px;
-    padding: 16px;
+    padding: 20px;
+    border-left: 4px solid transparent;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
   }
   
-  .feature-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    border-radius: 8px;
-    flex: 1;
-    min-width: 200px;
+  .feature-card.active {
+    border-left-color: #34a853;
   }
   
-  .feature-item.available {
-    background-color: #e6f4ea;
-  }
-  
-  .feature-item.unavailable {
-    background-color: #f8f9fa;
-    color: #5f6368;
+  .feature-card.inactive {
+    border-left-color: #ea4335;
   }
   
   .feature-icon {
-    margin-right: 12px;
-    font-size: 20px;
+    font-size: 24px;
+    margin-bottom: 16px;
   }
   
-  .feature-icon.check {
+  .feature-icon.active {
     color: #34a853;
   }
   
-  .feature-icon.times {
+  .feature-icon.inactive {
     color: #ea4335;
   }
   
-  .feature-item span {
-    font-size: 14px;
-    font-weight: 500;
-  }
-  
-  .detail-additional-info {
-    margin-bottom: 24px;
-  }
-  
-  .additional-block {
-    margin-bottom: 24px;
-  }
-  
-  .additional-block:last-child {
-    margin-bottom: 0;
-  }
-  
-  .additional-block h2 {
-    margin: 0 0 12px 0;
-    font-size: 18px;
+  .feature-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
     font-weight: 500;
     color: #202124;
   }
   
-  .additional-block p {
+  .feature-card p {
     margin: 0;
     font-size: 14px;
-    color: #3c4043;
-    line-height: 1.6;
+    color: #5f6368;
+    line-height: 1.5;
   }
   
-  .detail-actions {
+  .eligibility-container,
+  .notes-container {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  
+  .eligibility-container h2,
+  .notes-container h2 {
+    margin-top: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  
+  .eligibility-container p,
+  .notes-container p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #202124;
+  }
+  
+  .action-section {
+    border-top: 1px solid #dadce0;
+    padding-top: 24px;
+  }
+  
+  .action-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
@@ -275,30 +263,26 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     padding: 0 24px;
-    height: 36px;
+    height: 40px;
     border-radius: 4px;
     font-size: 14px;
     font-weight: 500;
-    cursor: pointer;
     text-decoration: none;
-    transition: background-color 0.2s;
+    cursor: pointer;
+    transition: all 0.2s;
   }
   
-  .action-button svg {
-    margin-right: 8px;
-  }
-  
-  .action-button.call {
+  .action-button.phone {
     background-color: #1a73e8;
     color: white;
     border: none;
   }
   
-  .action-button.call:hover {
+  .action-button.phone:hover {
     background-color: #1765cc;
     color: white;
-    text-decoration: none;
   }
   
   .action-button.website {
@@ -309,12 +293,11 @@
   
   .action-button.website:hover {
     background-color: #d2e3fc;
-    text-decoration: none;
   }
   
   .action-button.print {
-    background-color: #f8f9fa;
-    color: #3c4043;
+    background-color: white;
+    color: #5f6368;
     border: 1px solid #dadce0;
   }
   
@@ -322,7 +305,7 @@
     background-color: #f1f3f4;
   }
   
-  /* Loading and error states */
+  /* Loading, Error, and Not Found states */
   .detail-loading,
   .detail-error,
   .detail-not-found {
@@ -330,9 +313,9 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 300px;
+    min-height: 400px;
+    padding: 40px;
     text-align: center;
-    padding: 24px;
   }
   
   .loading-spinner {
@@ -342,7 +325,7 @@
     border-top: 4px solid #1a73e8;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
   }
   
   @keyframes spin {
@@ -359,10 +342,10 @@
   .btn-back {
     display: inline-flex;
     align-items: center;
-    margin-top: 16px;
     color: #1a73e8;
     text-decoration: none;
     font-weight: 500;
+    margin-top: 16px;
   }
   
   .btn-back svg {
@@ -376,38 +359,40 @@
   /* Print styles */
   @media print {
     .back-link,
-    .directions-link,
-    .detail-actions {
+    .action-section {
       display: none !important;
     }
     
     .detail-container {
-      box-shadow: none;
+      box-shadow: none !important;
+      border: 1px solid #e0e0e0;
     }
     
-    .improved-detail-page {
-      padding: 0;
+    .map-container,
+    .map-placeholder {
+      display: none !important;
     }
   }
   
   /* Responsive adjustments */
   @media (max-width: 768px) {
-    .detail-main-grid {
+    .resource-detail-page {
+      padding: 16px;
+    }
+    
+    .detail-two-columns {
       grid-template-columns: 1fr;
-      gap: 16px;
     }
     
-    .detail-map-container,
-    .map-placeholder {
-      height: 200px;
+    .detail-header h1 {
+      font-size: 20px;
     }
     
-    .feature-card {
-      flex-direction: column;
-      gap: 8px;
+    .features-grid {
+      grid-template-columns: 1fr;
     }
     
-    .detail-actions {
+    .action-buttons {
       flex-direction: column;
     }
     
