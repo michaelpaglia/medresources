@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   FaMapMarkerAlt, 
   FaPhone, 
@@ -12,8 +13,11 @@ import MapView from '../components/MapView';
 import TransitRoutesTab from '../components/TransitRoutesTab';
 import '../styles/ImprovedResourceDetailPage.css';
 
-const ImprovedResourceDetailPage = ({ match, history }) => {
-  const { id } = match.params;
+const ImprovedResourceDetailPage = () => {
+  // Use React Router v6 hooks
+  const { id } = useParams();
+  const navigate = useNavigate();
+  
   const [resource, setResource] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -97,7 +101,7 @@ const ImprovedResourceDetailPage = ({ match, history }) => {
         <p>{error}</p>
         <button 
           className="btn-back"
-          onClick={() => history.push('/search')}
+          onClick={() => navigate('/search')}
         >
           <FaArrowLeft /> Back to Search
         </button>
@@ -112,7 +116,7 @@ const ImprovedResourceDetailPage = ({ match, history }) => {
         <p>The requested resource could not be located.</p>
         <button 
           className="btn-back"
-          onClick={() => history.push('/search')}
+          onClick={() => navigate('/search')}
         >
           <FaArrowLeft /> Back to Search
         </button>
