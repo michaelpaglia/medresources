@@ -1,22 +1,32 @@
+// Update client/src/components/TransitRoutesTab.js
 import React, { useState } from 'react';
 import { 
   FaBus, 
   FaMapMarkerAlt, 
   FaWalking 
 } from 'react-icons/fa';
+import '../styles/TransitRoutes.css';
 
 const TransitRoutesTab = ({ resource }) => {
   const [startAddress, setStartAddress] = useState('');
   const [transitRoutes, setTransitRoutes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   const handleTransitSearch = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setDebugInfo(null);
 
     try {
+      console.log('Searching for transit routes from', startAddress, 'to', resource);
+      
+      if (!resource.latitude || !resource.longitude) {
+        throw new Error('Resource coordinates are missing');
+      }
+
       const response = await fetch('/api/resources/transit-routes', {
         method: 'POST',
         headers: {
@@ -29,13 +39,20 @@ const TransitRoutesTab = ({ resource }) => {
         })
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to find transit routes');
+        throw new Error(data.error || 'Failed to find transit routes');
       }
 
-      const data = await response.json();
+      console.log('Transit routes found:', data);
       setTransitRoutes(data);
+      
+      if (data.length === 0) {
+        setDebugInfo('No transit routes found between these locations.');
+      }
     } catch (err) {
+      console.error('Transit search error:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -63,6 +80,13 @@ const TransitRoutesTab = ({ resource }) => {
       {error && (
         <div className="error-message">
           <p>{error}</p>
+          <small>Debug: Make sure resource has coordinates and server endpoints are working.</small>
+        </div>
+      )}
+
+      {debugInfo && (
+        <div className="info-message">
+          <p>{debugInfo}</p>
         </div>
       )}
 
@@ -100,7 +124,7 @@ const TransitRoutesTab = ({ resource }) => {
         </div>
       )}
 
-      {transitRoutes.length === 0 && !isLoading && !error && (
+      {transitRoutes.length === 0 && !isLoading && !error && !debugInfo && (
         <div className="no-routes-message">
           <p>Enter an address to find transit routes.</p>
         </div>
