@@ -1,61 +1,49 @@
-// components/MapView.js
 import React, { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
-import { FaMapMarkerAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaExclamationTriangle, FaBus } from 'react-icons/fa';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import '../styles/MapView.css';
 
-// Fix for default marker icons in React Leaflet
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-const defaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
+const DefaultIcon = L.icon({
+  iconUrl: '/marker-icon.png',
+  shadowUrl: '/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
-  popupAnchor: [1, -34]
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
 
-L.Marker.prototype.options.icon = defaultIcon;
+L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom component to update map view when resources change
 const MapBoundsUpdater = ({ resources }) => {
   const map = useMap();
-  
+
   useEffect(() => {
     if (resources && resources.length > 0) {
-      // Filter out resources without valid coordinates
       const validLocations = resources.filter(
-        res => res.latitude && res.longitude && 
+        res => res.latitude && res.longitude &&
         !isNaN(parseFloat(res.latitude)) && 
         !isNaN(parseFloat(res.longitude))
       );
-      
+
       if (validLocations.length > 0) {
-        // Create bounds object
-        const bounds = validLocations.reduce((bounds, resource) => {
-          const lat = parseFloat(resource.latitude);
-          const lng = parseFloat(resource.longitude);
-          return bounds.extend([lat, lng]);
-        }, L.latLngBounds([]));
-        
-        // Only fit bounds if we have valid points
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, {
-            padding: [50, 50],
-            maxZoom: 13
-          });
-        }
+        const bounds = L.latLngBounds(
+          validLocations.map(res => [
+            parseFloat(res.latitude),
+            parseFloat(res.longitude)
+          ])
+        );
+
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
       }
     }
   }, [map, resources]);
-  
+
   return null;
 };
 
-// Resource type mapping for marker colors
 const resourceTypes = {
   1: { name: 'Health Center', color: '#4285F4' },
   2: { name: 'Hospital', color: '#EA4335' },
@@ -69,71 +57,67 @@ const resourceTypes = {
   10: { name: 'Urgent Care', color: '#FF5722' }
 };
 
-// Create custom colored icons for each resource type
 const createColoredIcon = (color) => {
-  return L.divIcon({
-    className: 'custom-marker-icon',
-    html: `<div style="background-color: ${color}; border: 2px solid white; border-radius: 50%; width: 100%; height: 100%; box-shadow: 0 0 3px rgba(0,0,0,0.4);"></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -10]
+  return new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
   });
 };
 
-const MapView = ({ resources }) => {
+const MapView = ({ resources, transitRoutes = [] }) => {
   const mapRef = useRef(null);
-  const [validResources, setValidResources] = useState([]);
-  const [invalidResources, setInvalidResources] = useState([]);
-  
-  // Default center for Troy, NY area
+
   const defaultCenter = [42.7284, -73.6918];
   const defaultZoom = 12;
-  
-  useEffect(() => {
-    if (resources && resources.length > 0) {
-      // Separate resources with valid coordinates from those without
-      const valid = [];
-      const invalid = [];
-      
-      resources.forEach(resource => {
-        const lat = parseFloat(resource.latitude);
-        const lng = parseFloat(resource.longitude);
-        
-        if (lat && lng && !isNaN(lat) && !isNaN(lng) && 
-            lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          valid.push({
-            ...resource,
-            latitude: lat,
-            longitude: lng
-          });
-        } else {
-          invalid.push(resource);
-        }
-      });
-      
-      setValidResources(valid);
-      setInvalidResources(invalid);
-    }
-  }, [resources]);
 
-  // Format phone number for display
   const formatPhone = (phone) => {
     if (!phone) return '';
-    
-    // Remove non-numeric characters
     const cleaned = phone.replace(/\D/g, '');
-    
-    // Format as (XXX) XXX-XXXX if it's a 10-digit number
     if (cleaned.length === 10) {
       return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
     }
-    
     return phone;
   };
 
-  // Get resource type info or default
   const getResourceType = (typeId) => {
     return resourceTypes[typeId] || { name: 'Resource', color: '#757575' };
+  };
+
+  const routeColors = {
+    default: '#1a73e8',
+    '1': '#EA4335',
+    '2': '#34A853',
+    '3': '#FBBC05',
+    '4': '#4285F4',
+    '5': '#9C27B0'
+  };
+
+  const getRouteColor = (routeId) => {
+    const routeNumber = routeId?.split('-')?.[0];
+    return routeColors[routeNumber] || routeColors.default;
+  };
+
+  const prepareTransitRoutes = () => {
+    return transitRoutes.map(route => {
+      const startLat = parseFloat(route.startLat || 0);
+      const startLon = parseFloat(route.startLon || 0);
+      const endLat = parseFloat(route.endLat || 0);
+      const endLon = parseFloat(route.endLon || 0);
+
+      return {
+        id: route.routeId,
+        name: route.routeName,
+        color: getRouteColor(route.routeId),
+        path: [
+          [startLat, startLon],
+          [endLat, endLon]
+        ]
+      };
+    });
   };
 
   if (!resources || resources.length === 0) {
@@ -146,18 +130,25 @@ const MapView = ({ resources }) => {
       </div>
     );
   }
-  
-  if (validResources.length === 0 && resources.length > 0) {
+
+  const validResources = resources.filter(resource => 
+    resource.latitude && resource.longitude && 
+    !isNaN(parseFloat(resource.latitude)) && 
+    !isNaN(parseFloat(resource.longitude))
+  );
+
+  if (validResources.length === 0) {
     return (
       <div className="map-container">
         <div className="map-placeholder">
           <FaExclamationTriangle size={32} />
           <p>No valid location data available for the selected resources.</p>
-          <p className="small-text">Try adjusting your search or view as list instead.</p>
         </div>
       </div>
     );
   }
+
+  const mapTransitRoutes = prepareTransitRoutes();
 
   return (
     <div className="map-view-container">
@@ -171,18 +162,32 @@ const MapView = ({ resources }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
+
         <MapBoundsUpdater resources={validResources} />
-        
+
+        {mapTransitRoutes.map((route, index) => (
+          <Polyline
+            key={`route-${index}`}
+            positions={route.path}
+            color={route.color}
+            weight={4}
+            opacity={0.7}
+          >
+            <Popup>
+              <div>
+                <h3><FaBus style={{ marginRight: '5px' }} /> {route.name}</h3>
+                <p>Route {route.id}</p>
+              </div>
+            </Popup>
+          </Polyline>
+        ))}
+
         {validResources.map((resource) => {
           const resourceType = getResourceType(resource.resource_type_id);
-          const icon = createColoredIcon(resourceType.color);
-          
           return (
             <Marker
               key={resource.id}
-              position={[resource.latitude, resource.longitude]}
-              icon={icon}
+              position={[parseFloat(resource.latitude), parseFloat(resource.longitude)]}
             >
               <Popup className="resource-popup">
                 <div className="popup-content">
@@ -190,13 +195,13 @@ const MapView = ({ resources }) => {
                   <div className="resource-type">
                     {resourceType.name}
                   </div>
-                  
+
                   <div className="popup-address">
                     <FaMapMarkerAlt />
                     <span>{resource.address_line1}<br />
-                    {resource.city}, {resource.state} {resource.zip}</span>
+                      {resource.city}, {resource.state} {resource.zip}</span>
                   </div>
-                  
+
                   {resource.phone && (
                     <div className="popup-phone">
                       <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
@@ -204,19 +209,7 @@ const MapView = ({ resources }) => {
                       </a>
                     </div>
                   )}
-                  
-                  <div className="popup-features">
-                    {resource.accepts_uninsured && (
-                      <span className="feature-tag">Accepts Uninsured</span>
-                    )}
-                    {resource.sliding_scale && (
-                      <span className="feature-tag">Sliding Scale</span>
-                    )}
-                    {resource.free_care_available && (
-                      <span className="feature-tag">Free Care</span>
-                    )}
-                  </div>
-                  
+
                   <Link to={`/resource/${resource.id}`} className="view-details-btn">
                     View Details
                   </Link>
@@ -226,11 +219,11 @@ const MapView = ({ resources }) => {
           );
         })}
       </MapContainer>
-      
-      {invalidResources.length > 0 && (
+
+      {resources.length > validResources.length && (
         <div className="missing-locations-notice">
           <FaExclamationTriangle />
-          <span>{invalidResources.length} resource{invalidResources.length !== 1 ? 's' : ''} without location data {invalidResources.length === 1 ? 'is' : 'are'} not shown on the map.</span>
+          <span>{resources.length - validResources.length} resource(s) without location data not shown on map.</span>
         </div>
       )}
     </div>

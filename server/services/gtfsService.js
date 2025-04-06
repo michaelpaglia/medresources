@@ -7,6 +7,10 @@ class GTFSService {
     this.gtfsDirectory = gtfsDirectory;
     console.log('Loading GTFS data from directory:', gtfsDirectory);
     
+    // Cache for route lookups to improve performance
+    this.routesForStopCache = new Map();
+    this.nearbyStopsCache = new Map();
+    
     try {
       this.stops = this.loadStops();
       console.log(`Loaded ${this.stops.length} stops`);
@@ -19,9 +23,70 @@ class GTFSService {
       
       this.stopTimes = this.loadStopTimes();
       console.log(`Loaded ${this.stopTimes.length} stop times`);
+      
+      // Build lookup maps for faster access
+      this.buildLookupMaps();
+      
+      // Build spatial index
+      this.buildSpatialIndex();
     } catch (error) {
       console.error('Error loading GTFS data:', error);
+      this.stops = [];
+      this.routes = [];
+      this.trips = [];
+      this.stopTimes = [];
     }
+  }
+
+  buildLookupMaps() {
+    // Create a map of trip_id to route_id for faster lookups
+    this.tripToRouteMap = new Map();
+    for (const trip of this.trips) {
+      this.tripToRouteMap.set(trip.trip_id, trip.route_id);
+    }
+    
+    // Create a map of stop_id to trip_ids for faster lookups
+    this.stopToTripsMap = new Map();
+    for (const stopTime of this.stopTimes) {
+      if (!this.stopToTripsMap.has(stopTime.stop_id)) {
+        this.stopToTripsMap.set(stopTime.stop_id, new Set());
+      }
+      this.stopToTripsMap.get(stopTime.stop_id).add(stopTime.trip_id);
+    }
+    
+    // Create a map of route_id to route object
+    this.routeMap = new Map();
+    for (const route of this.routes) {
+      this.routeMap.set(route.route_id, route);
+    }
+    
+    console.log('Built lookup maps for faster access');
+  }
+  
+  buildSpatialIndex() {
+    // This is a simple grid-based spatial index
+    this.spatialGrid = new Map();
+    const gridSize = 0.005; // About 0.3 miles, adjust as needed
+    
+    for (const stop of this.stops) {
+      const lat = parseFloat(stop.stop_lat);
+      const lon = parseFloat(stop.stop_lon);
+      
+      if (isNaN(lat) || isNaN(lon)) continue;
+      
+      // Calculate grid cell
+      const latCell = Math.floor(lat / gridSize);
+      const lonCell = Math.floor(lon / gridSize);
+      const cellKey = `${latCell},${lonCell}`;
+      
+      if (!this.spatialGrid.has(cellKey)) {
+        this.spatialGrid.set(cellKey, []);
+      }
+      
+      this.spatialGrid.get(cellKey).push(stop);
+    }
+    
+    console.log(`Built spatial index with ${this.spatialGrid.size} grid cells`);
   }
 
   // Load CSV data
@@ -96,16 +161,44 @@ class GTFSService {
     return this.loadCSV('stop_times.txt');
   }
 
-  // Find nearest stops to a given location
-  findNearestStops(latitude, longitude, maxDistance = 1) {
-    return this.stops.filter(stop => {
+  // Find nearest stops to a given location - spatially indexed version
+  findNearestStops(latitude, longitude, maxDistance = 0.3) {
+    // Check cache first
+    const cacheKey = `${latitude.toFixed(5)},${longitude.toFixed(5)},${maxDistance}`;
+    if (this.nearbyStopsCache.has(cacheKey)) {
+      return this.nearbyStopsCache.get(cacheKey);
+    }
+    
+    // First, check if coordinates are valid
+    if (isNaN(latitude) || isNaN(longitude)) {
+      console.error('Invalid coordinates provided:', { latitude, longitude });
+      return [];
+    }
+    
+    const gridSize = 0.005; // Should match what was used in buildSpatialIndex
+    const cellsToCheck = Math.ceil(maxDistance / (gridSize * 69)); // Convert to approximate degree distance
+    
+    // Get center grid cell
+    const centerLatCell = Math.floor(latitude / gridSize);
+    const centerLonCell = Math.floor(longitude / gridSize);
+    
+    // Collect candidate stops from nearby grid cells
+    const candidateStops = [];
+    for (let latOffset = -cellsToCheck; latOffset <= cellsToCheck; latOffset++) {
+      for (let lonOffset = -cellsToCheck; lonOffset <= cellsToCheck; lonOffset++) {
+        const cellKey = `${centerLatCell + latOffset},${centerLonCell + lonOffset}`;
+        
+        if (this.spatialGrid.has(cellKey)) {
+          candidateStops.push(...this.spatialGrid.get(cellKey));
+        }
+      }
+    }
+    
+    // Calculate exact distances
+    const result = candidateStops.filter(stop => {
       try {
         const stopLat = parseFloat(stop.stop_lat);
         const stopLon = parseFloat(stop.stop_lon);
-        
-        if (isNaN(stopLat) || isNaN(stopLon)) {
-          return false;
-        }
         
         const distance = haversine(
           { latitude, longitude },
@@ -115,36 +208,81 @@ class GTFSService {
         
         return distance <= maxDistance;
       } catch (error) {
-        console.error('Error calculating distance:', error);
         return false;
       }
     });
+    
+    // Sort by distance
+    result.sort((a, b) => {
+      const distA = haversine(
+        { latitude, longitude },
+        { latitude: parseFloat(a.stop_lat), longitude: parseFloat(a.stop_lon) },
+        { unit: 'mile' }
+      );
+      
+      const distB = haversine(
+        { latitude, longitude },
+        { latitude: parseFloat(b.stop_lat), longitude: parseFloat(b.stop_lon) },
+        { unit: 'mile' }
+      );
+      
+      return distA - distB;
+    });
+    
+    // Limit to 10 nearest stops for better performance
+    const limitedResult = result.slice(0, 10);
+    
+    // Cache the result
+    this.nearbyStopsCache.set(cacheKey, limitedResult);
+    
+    return limitedResult;
   }
 
-  // Get routes for a specific stop
+  // Get routes for a specific stop - with caching
   getRoutesForStop(stopId) {
+    // Check cache first
+    if (this.routesForStopCache.has(stopId)) {
+      return this.routesForStopCache.get(stopId);
+    }
+    
     try {
-      // Find trips that use this stop
-      const tripsForStop = this.stopTimes
-        .filter(st => st.stop_id === stopId)
-        .map(st => st.trip_id);
+      // Use the lookup maps for faster access
+      if (!this.stopToTripsMap.has(stopId)) {
+        return [];
+      }
+      
+      const tripIds = this.stopToTripsMap.get(stopId);
+      const routeIds = new Set();
       
       // Get route IDs for these trips
-      const routeIds = new Set();
-      this.trips
-        .filter(trip => tripsForStop.includes(trip.trip_id))
-        .forEach(trip => routeIds.add(trip.route_id));
+      for (const tripId of tripIds) {
+        const routeId = this.tripToRouteMap.get(tripId);
+        if (routeId) {
+          routeIds.add(routeId);
+        }
+      }
       
-      // Get route details
-      return this.routes.filter(route => routeIds.has(route.route_id));
+      // Get route details using the route map
+      const routes = [];
+      for (const routeId of routeIds) {
+        const route = this.routeMap.get(routeId);
+        if (route) {
+          routes.push(route);
+        }
+      }
+      
+      // Cache the result
+      this.routesForStopCache.set(stopId, routes);
+      
+      return routes;
     } catch (error) {
       console.error('Error getting routes for stop:', error);
       return [];
     }
   }
 
-  // Find routes between two locations
-  findTransitRoutes(startLat, startLon, endLat, endLon, maxDistance = 1) {
+  // Find routes between two locations - highly optimized
+  findTransitRoutes(startLat, startLon, endLat, endLon, maxDistance = 0.3) {
     try {
       console.log('Finding transit routes between', 
         { startLat, startLon }, 
@@ -152,7 +290,7 @@ class GTFSService {
         'max distance:', maxDistance
       );
       
-      // Find nearest stops to start and end locations
+      // Significantly reduce the number of stops we examine
       const startStops = this.findNearestStops(startLat, startLon, maxDistance);
       const endStops = this.findNearestStops(endLat, endLon, maxDistance);
       
@@ -163,46 +301,89 @@ class GTFSService {
         return [];
       }
 
-      // Find common routes
+      // Find routes that connect these stops
       const transitOptions = [];
-
-      for (const startStop of startStops) {
-        const startRoutes = this.getRoutesForStop(startStop.stop_id);
-        
-        for (const endStop of endStops) {
-          const endRoutes = this.getRoutesForStop(endStop.stop_id);
-          
-          // Find intersection of routes
-          for (const startRoute of startRoutes) {
-            for (const endRoute of endRoutes) {
-              if (startRoute.route_id === endRoute.route_id) {
-                const startDistance = haversine(
-                  { latitude: startLat, longitude: startLon },
-                  { latitude: parseFloat(startStop.stop_lat), longitude: parseFloat(startStop.stop_lon) },
-                  { unit: 'mile' }
-                );
-                
-                const endDistance = haversine(
-                  { latitude: endLat, longitude: endLon },
-                  { latitude: parseFloat(endStop.stop_lat), longitude: parseFloat(endStop.stop_lon) },
-                  { unit: 'mile' }
-                );
-                
-                transitOptions.push({
-                  route: startRoute,
-                  startStop: startStop,
-                  endStop: endStop,
-                  startDistance,
-                  endDistance
-                });
-              }
+      
+      // Get all route IDs for each stop
+      const startStopRoutes = startStops.map(stop => ({
+        stop: stop,
+        routes: this.getRoutesForStop(stop.stop_id),
+        distance: haversine(
+          { latitude: startLat, longitude: startLon },
+          { latitude: parseFloat(stop.stop_lat), longitude: parseFloat(stop.stop_lon) },
+          { unit: 'mile' }
+        )
+      }));
+      
+      const endStopRoutes = endStops.map(stop => ({
+        stop: stop,
+        routes: this.getRoutesForStop(stop.stop_id),
+        distance: haversine(
+          { latitude: endLat, longitude: endLon },
+          { latitude: parseFloat(stop.stop_lat), longitude: parseFloat(stop.stop_lon) },
+          { unit: 'mile' }
+        )
+      }));
+      
+      // Create a map of route IDs to end stops for quick lookup
+      const routeToEndStops = new Map();
+      
+      for (const endStopRoute of endStopRoutes) {
+        for (const route of endStopRoute.routes) {
+          if (!routeToEndStops.has(route.route_id)) {
+            routeToEndStops.set(route.route_id, []);
+          }
+          routeToEndStops.get(route.route_id).push({
+            stop: endStopRoute.stop,
+            distance: endStopRoute.distance
+          });
+        }
+      }
+      
+      // For each start stop, find matching routes to end stops
+      for (const startStopRoute of startStopRoutes) {
+        for (const route of startStopRoute.routes) {
+          if (routeToEndStops.has(route.route_id)) {
+            for (const endStopInfo of routeToEndStops.get(route.route_id)) {
+              transitOptions.push({
+                route: route,
+                startStop: startStopRoute.stop,
+                endStop: endStopInfo.stop,
+                startDistance: startStopRoute.distance,
+                endDistance: endStopInfo.distance
+              });
             }
           }
         }
       }
+      
+      // Sort by total walking distance
+      transitOptions.sort((a, b) => {
+        const totalDistanceA = a.startDistance + a.endDistance;
+        const totalDistanceB = b.startDistance + b.endDistance;
+        return totalDistanceA - totalDistanceB;
+      });
 
-      console.log(`Found ${transitOptions.length} transit options`);
-      return transitOptions;
+      // Remove duplicates with the same route between same stops
+      const uniqueRoutes = [];
+      const seenRoutes = new Set();
+      
+      for (const option of transitOptions) {
+        const routeKey = `${option.route.route_id}-${option.startStop.stop_id}-${option.endStop.stop_id}`;
+        
+        if (!seenRoutes.has(routeKey)) {
+          seenRoutes.add(routeKey);
+          uniqueRoutes.push(option);
+          
+          // Stop after finding 3 options to keep response time fast
+          if (uniqueRoutes.length >= 3) {
+            break;
+          }
+        }
+      }
+
+      console.log(`Returning ${uniqueRoutes.length} transit options`);
+      return uniqueRoutes;
     } catch (error) {
       console.error('Error finding transit routes:', error);
       return [];

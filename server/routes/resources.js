@@ -21,6 +21,7 @@ router.post('/load', resourceController.loadResourcesForLocation);
 router.post('/enrich-location/:id', resourceController.enrichResourceLocation);
 router.post('/update-coordinates', resourceController.updateMissingCoordinates);
 router.post('/transit-routes', transitController.findTransitRoutes);
+router.get('/transit-routes', transitController.findTransitRoutesByCoords);
 
 // GET all resources
 router.get('/', resourceController.getAllResources);
