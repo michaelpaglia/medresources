@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaExclamationTriangle, FaBus } from 'react-icons/fa';
@@ -58,35 +58,55 @@ const MapBoundsUpdater = ({ resources, transitRoutes = [] }) => {
   return null;
 };
 
-const resourceTypes = {
-  1: { name: 'Health Center', color: '#4285F4' },
-  2: { name: 'Hospital', color: '#EA4335' },
-  3: { name: 'Pharmacy', color: '#34A853' },
-  4: { name: 'Dental Care', color: '#FBBC05' },
-  5: { name: 'Mental Health', color: '#9C27B0' },
-  6: { name: 'Transportation', color: '#3949AB' },
-  7: { name: 'Social Services', color: '#00ACC1' },
-  8: { name: "Women's Health", color: '#EC407A' },
-  9: { name: 'Specialty Care', color: '#FF7043' },
-  10: { name: 'Urgent Care', color: '#FF5722' }
-};
-
-// Transit Stop Icon
-const transitStopIcon = new L.Icon({
-  iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
 const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) => {
-  const mapRef = useRef(null);
-
   const defaultCenter = [42.7284, -73.6918]; // Troy, NY
   const defaultZoom = 12;
 
+  // Resource type mapping with colors
+  const resourceTypes = {
+    1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe' },
+    2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6' },
+    3: { name: 'Pharmacy', color: '#34A853', bgColor: '#e6f4ea' },
+    4: { name: 'Dental Care', color: '#FBBC05', bgColor: '#fef7e0' },
+    5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5' },
+    6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6' },
+    7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa' },
+    8: { name: "Women's Health", color: '#EC407A', bgColor: '#fce4ec' },
+    9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7' },
+    10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7' }
+  };
+
+  // Create custom icons for different resource types
+  const createResourceIcon = (resourceTypeId) => {
+    const resourceType = getResourceType(resourceTypeId);
+    return new L.Icon({
+      iconUrl: `https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${getColorCode(resourceType.color)}.png`,
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+  };
+
+  // Helper to convert hex colors to marker color codes
+  const getColorCode = (hexColor) => {
+    const colorMap = {
+      '#4285F4': 'blue',    // Health Center
+      '#EA4335': 'red',     // Hospital
+      '#34A853': 'green',   // Pharmacy
+      '#FBBC05': 'orange',  // Dental
+      '#9C27B0': 'violet',  // Mental Health
+      '#3949AB': 'blue',    // Transportation
+      '#00ACC1': 'cadetblue', // Social Services
+      '#EC407A': 'pink',    // Women's Health
+      '#FF7043': 'orange',  // Specialty Care
+      '#FF5722': 'red'      // Urgent Care
+    };
+    return colorMap[hexColor] || 'blue';
+  };
+
+  // Format phone number
   const formatPhone = (phone) => {
     if (!phone) return '';
     const cleaned = phone.replace(/\D/g, '');
@@ -96,10 +116,12 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
     return phone;
   };
 
+  // Get resource type information
   const getResourceType = (typeId) => {
-    return resourceTypes[typeId] || { name: 'Resource', color: '#757575' };
+    return resourceTypes[typeId] || { name: 'Resource', color: '#757575', bgColor: '#f5f5f5' };
   };
 
+  // Route colors for transit lines
   const routeColors = {
     default: '#1a73e8',
     '1': '#EA4335',
@@ -109,10 +131,21 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
     '5': '#9C27B0'
   };
 
+  // Get color for transit routes
   const getRouteColor = (routeId) => {
     const routeNumber = routeId?.split('-')?.[0];
     return routeColors[routeNumber] || routeColors.default;
   };
+
+  // Transit Stop Icon
+  const transitStopIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
 
   if (!resources || resources.length === 0) {
     return (
@@ -148,7 +181,6 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
         center={defaultCenter}
         zoom={defaultZoom}
         style={{ height: '600px', width: '100%' }}
-        ref={mapRef}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -210,43 +242,59 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
         ))}
 
         {/* Resource markers */}
-        {validResources.map((resource) => {
-          const resourceType = getResourceType(resource.resource_type_id);
-          return (
-            <Marker
-              key={resource.id}
-              position={[parseFloat(resource.latitude), parseFloat(resource.longitude)]}
-            >
-              <Popup className="resource-popup">
-                <div className="popup-content">
-                  <h3>{resource.name}</h3>
-                  <div className="resource-type">
-                    {resourceType.name}
-                  </div>
-
-                  <div className="popup-address">
-                    <FaMapMarkerAlt />
-                    <span>{resource.address_line1}<br />
-                      {resource.city}, {resource.state} {resource.zip}</span>
-                  </div>
-
-                  {resource.phone && (
-                    <div className="popup-phone">
-                      <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
-                        {formatPhone(resource.phone)}
-                      </a>
-                    </div>
-                  )}
-
-                  <Link to={`/resource/${resource.id}`} className="view-details-btn">
-                    View Details
-                  </Link>
+        {validResources.map((resource) => (
+          <Marker
+            key={resource.id}
+            position={[parseFloat(resource.latitude), parseFloat(resource.longitude)]}
+            icon={createResourceIcon(resource.resource_type_id)}
+          >
+            <Popup className="resource-popup">
+              <div className="popup-content">
+                <h3>{resource.name}</h3>
+                <div className="resource-type">
+                  {getResourceType(resource.resource_type_id).name}
                 </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+
+                <div className="popup-address">
+                  <FaMapMarkerAlt />
+                  <span>{resource.address_line1}<br />
+                    {resource.city}, {resource.state} {resource.zip}</span>
+                </div>
+
+                {resource.phone && (
+                  <div className="popup-phone">
+                    <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
+                      {formatPhone(resource.phone)}
+                    </a>
+                  </div>
+                )}
+
+                <Link to={`/resource/${resource.id}`} className="view-details-btn">
+                  View Details
+                </Link>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
+
+      {/* Map Legend */}
+      <div className="map-legend">
+        <h4>Resource Types</h4>
+        <div className="legend-items">
+          {Object.keys(resourceTypes)
+            .filter(typeId => validResources.some(r => r.resource_type_id == typeId))
+            .map(typeId => (
+              <div key={typeId} className="legend-item">
+                <span 
+                  className="legend-marker" 
+                  style={{ backgroundColor: resourceTypes[typeId].color }}
+                ></span>
+                <span className="legend-label">{resourceTypes[typeId].name}</span>
+              </div>
+            ))}
+        </div>
+      </div>
 
       {/* Transit Legend */}
       {showTransitLegend && transitRoutes.length > 0 && (

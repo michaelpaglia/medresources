@@ -1,40 +1,45 @@
+// client/src/pages/ImprovedResourceDetailPage.js
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { 
   FaMapMarkerAlt, 
   FaPhone, 
-  FaClock, 
   FaGlobe, 
-  FaCheckCircle,
-  FaExternalLinkAlt,
-  FaArrowLeft
+  FaClock, 
+  FaCheckCircle, 
+  FaTimesCircle,
+  FaArrowLeft,
+  FaDirections,
+  FaPrint,
+  FaInfoCircle,
+  FaBus,
+  FaUser
 } from 'react-icons/fa';
 import MapView from '../components/MapView';
 import TransitRoutesTab from '../components/TransitRoutesTab';
 import '../styles/ImprovedResourceDetailPage.css';
 
 const ImprovedResourceDetailPage = () => {
-  // Use React Router v6 hooks
   const { id } = useParams();
-  const navigate = useNavigate();
-  
   const [resource, setResource] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [transitRoutes, setTransitRoutes] = useState([]);
+  const [activeTab, setActiveTab] = useState('info');
+  // No longer using subtabs
 
-  // Resource type mapping
+  // Resource type mapping with brand colors
   const resourceTypes = {
-    1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe' },
-    2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6' },
-    3: { name: 'Pharmacy', color: '#34A853', bgColor: '#e6f4ea' },
-    4: { name: 'Dental Care', color: '#FBBC05', bgColor: '#fef7e0' },
-    5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5' },
-    6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6' },
-    7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa' },
-    8: { name: "Women's Health", color: '#EC407A', bgColor: '#fce4ec' },
-    9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7' },
-    10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7' }
+    1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe', icon: 'clinic' },
+    2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6', icon: 'hospital' },
+    3: { name: 'Pharmacy', color: '#34A853', bgColor: '#e6f4ea', icon: 'pharmacy' },
+    4: { name: 'Dental Care', color: '#FBBC05', bgColor: '#fef7e0', icon: 'dental' },
+    5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5', icon: 'mental-health' },
+    6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6', icon: 'transportation' },
+    7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa', icon: 'social' },
+    8: { name: "Women's Health", color: '#EC407A', bgColor: '#fce4ec', icon: 'womens-health' },
+    9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7', icon: 'specialty' },
+    10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7', icon: 'urgent' }
   };
 
   // Fetch resource details
@@ -80,241 +85,312 @@ const ImprovedResourceDetailPage = () => {
     return phoneNumber;
   };
 
-  // Get resource type style
-  const getResourceTypeStyle = (typeId) => {
+  // Get resource type
+  const getResourceType = (typeId) => {
     return resourceTypes[typeId] || { 
       name: 'Medical Resource', 
       color: '#757575', 
-      bgColor: '#f5f5f5' 
+      bgColor: '#f5f5f5',
+      icon: 'medical'
     };
   };
 
-  // Render loading state
   if (isLoading) {
     return (
-      <div className="detail-loading">
+      <div className="resource-detail-loading">
         <div className="loading-spinner"></div>
         <p>Loading resource details...</p>
       </div>
     );
   }
 
-  // Render error state
   if (error) {
     return (
-      <div className="detail-error">
+      <div className="resource-detail-error">
+        <FaInfoCircle size={48} />
         <h2>Error Loading Resource</h2>
         <p>{error}</p>
-        <button 
-          className="btn-back"
-          onClick={() => navigate('/search')}
-        >
+        <Link to="/search" className="back-button">
           <FaArrowLeft /> Back to Search
-        </button>
+        </Link>
       </div>
     );
   }
 
-  // No resource found
   if (!resource) {
     return (
-      <div className="detail-not-found">
+      <div className="resource-detail-error">
+        <FaInfoCircle size={48} />
         <h2>Resource Not Found</h2>
-        <p>The requested resource could not be located.</p>
-        <button 
-          className="btn-back"
-          onClick={() => navigate('/search')}
-        >
+        <p>The requested resource could not be found.</p>
+        <Link to="/search" className="back-button">
           <FaArrowLeft /> Back to Search
-        </button>
+        </Link>
       </div>
     );
   }
 
-  // Resource type details
-  const resourceType = getResourceTypeStyle(resource.resource_type_id);
+  const resourceType = getResourceType(resource.resource_type_id);
+  const addressForMap = `${resource.address_line1}, ${resource.city}, ${resource.state} ${resource.zip}`;
+  const hasMap = resource.latitude && resource.longitude;
 
   return (
     <div className="resource-detail-page">
       <Link to="/search" className="back-link">
-        <FaArrowLeft /> Back to Search Results
+        <FaArrowLeft /> Back to Resources
       </Link>
       
-      <div className="detail-container">
-        <div className="detail-header">
-          <h1>{resource.name}</h1>
-          <span 
-            className="resource-type-badge"
-            style={{ 
-              backgroundColor: resourceType.bgColor,
-              color: resourceType.color
-            }}
-          >
-            {resourceType.name}
-          </span>
+      <header className="resource-header">
+        <div className="resource-header-content">
+          <div className="resource-title-group">
+            <span 
+              className="resource-type-badge"
+              style={{ 
+                backgroundColor: resourceType.bgColor,
+                color: resourceType.color
+              }}
+            >
+              {resourceType.name}
+            </span>
+            <h1>{resource.name}</h1>
+          </div>
+          
+          <div className="resource-actions-desktop">
+            {resource.phone && (
+              <a href={`tel:${resource.phone.replace(/\D/g, '')}`} className="action-button phone-button">
+                <FaPhone /> Call
+              </a>
+            )}
+            {hasMap && (
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="action-button directions-button"
+              >
+                <FaDirections /> Directions
+              </a>
+            )}
+            <button onClick={() => window.print()} className="action-button print-button">
+              <FaPrint /> Print
+            </button>
+          </div>
         </div>
-
-        <div className="detail-content">
-          <div className="detail-two-columns">
-            <div className="detail-section">
-              <h2>Location</h2>
+      </header>
+      
+      <div className="tab-navigation">
+        <button 
+          className={activeTab === 'info' ? 'tab-button active' : 'tab-button'}
+          onClick={() => setActiveTab('info')}
+        >
+          <FaInfoCircle /> Information
+        </button>
+        <button 
+          className={activeTab === 'transit' ? 'tab-button active' : 'tab-button'}
+          onClick={() => setActiveTab('transit')}
+        >
+          <FaBus /> Transit Options
+        </button>
+      </div>
+      
+      {activeTab === 'info' ? (
+        <div className="resource-main-content">
+          <div className="resource-row">
+            <div className="resource-card">
+              <h2 className="card-title">Features</h2>
+              <div className="feature-grid">
+                <div className={`feature-item ${resource.accepts_uninsured ? 'available' : 'unavailable'}`}>
+                  {resource.accepts_uninsured ? 
+                    <FaCheckCircle className="feature-icon available" /> : 
+                    <FaTimesCircle className="feature-icon unavailable" />
+                  }
+                  <div className="feature-text">
+                    <h3>Accepts Uninsured</h3>
+                    <p>{resource.accepts_uninsured ? 
+                      'This resource is available to patients without insurance.' : 
+                      'Insurance may be required for some services.'}</p>
+                  </div>
+                </div>
+                
+                <div className={`feature-item ${resource.sliding_scale ? 'available' : 'unavailable'}`}>
+                  {resource.sliding_scale ? 
+                    <FaCheckCircle className="feature-icon available" /> : 
+                    <FaTimesCircle className="feature-icon unavailable" />
+                  }
+                  <div className="feature-text">
+                    <h3>Sliding Scale Fees</h3>
+                    <p>{resource.sliding_scale ? 
+                      'Offers flexible pricing based on income.' : 
+                      'Does not offer income-based fee adjustments.'}</p>
+                  </div>
+                </div>
+                
+                <div className={`feature-item ${resource.free_care_available ? 'available' : 'unavailable'}`}>
+                  {resource.free_care_available ? 
+                    <FaCheckCircle className="feature-icon available" /> : 
+                    <FaTimesCircle className="feature-icon unavailable" />
+                  }
+                  <div className="feature-text">
+                    <h3>Free Care Available</h3>
+                    <p>{resource.free_care_available ? 
+                      'Provides free services to eligible patients.' : 
+                      'Free care options are not available.'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="resource-card">
+              <h2 className="card-title">Details</h2>
+              {resource.notes && (
+                <div className="detail-section">
+                  <h3>About</h3>
+                  <p className="resource-notes">{resource.notes}</p>
+                </div>
+              )}
+              
+              {resource.eligibility_criteria && (
+                <div className="detail-section">
+                  <h3>Eligibility</h3>
+                  <p>{resource.eligibility_criteria}</p>
+                </div>
+              )}
+              
+              <div className="detail-section">
+                <h3>Contact Information</h3>
+                <div className="contact-details">
+                  <div className="contact-item">
+                    <FaMapMarkerAlt className="contact-icon" />
+                    <div>
+                      <p className="address">
+                        {resource.address_line1}
+                        {resource.address_line2 && <><br />{resource.address_line2}</>}
+                        <br />
+                        {resource.city}, {resource.state} {resource.zip}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {resource.phone && (
+                    <div className="contact-item">
+                      <FaPhone className="contact-icon" />
+                      <div>
+                        <a href={`tel:${resource.phone.replace(/\D/g, '')}`} className="phone-link">
+                          {formatPhone(resource.phone)}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {resource.hours && (
+                    <div className="contact-item">
+                      <FaClock className="contact-icon" />
+                      <div>
+                        <p className="hours">{resource.hours}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {resource.website && (
+                    <div className="contact-item">
+                      <FaGlobe className="contact-icon" />
+                      <div>
+                        <a 
+                          href={resource.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="website-link"
+                        >
+                          Visit Website
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {hasMap && (
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="directions-link"
+                >
+                  <FaDirections /> Get Directions
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="transit-view">
+          <div className="resource-row">
+            <div className="resource-card transit-card">
+              <h2 className="card-title">Transit Options</h2>
+              <TransitRoutesTab 
+                resource={resource} 
+                onRoutesFound={handleTransitRoutesFound}
+              />
+            </div>
+            
+            <div className="resource-card map-card">
+              <h2 className="card-title">Location</h2>
               <div className="map-container">
-                {resource.latitude && resource.longitude ? (
+                {hasMap ? (
                   <MapView 
                     resources={[resource]} 
                     transitRoutes={transitRoutes}
                     showTransitLegend={transitRoutes.length > 0}
                   />
                 ) : (
-                  <div className="map-placeholder">
-                    <FaMapMarkerAlt />
-                    <p>Location data not available for this resource.</p>
+                  <div className="no-map-available">
+                    <FaMapMarkerAlt size={32} />
+                    <p>Map location not available</p>
                   </div>
                 )}
               </div>
               
-              {resource.address_line1 && (
-                <div className="detail-item">
-                  <FaMapMarkerAlt className="detail-icon" />
-                  <div className="detail-text">
-                    <p>
-                      {resource.address_line1}
-                      {resource.address_line2 && <br />}{resource.address_line2}
-                      <br />
-                      {resource.city}, {resource.state} {resource.zip}
-                    </p>
-                    
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        `${resource.address_line1}, ${resource.city}, ${resource.state} ${resource.zip}`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="directions-button"
-                    >
-                      <FaMapMarkerAlt /> Get Directions
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="detail-section">
-              <h2>Contact Information</h2>
-              <div className="contact-details">
-                {resource.phone && (
-                  <div className="detail-item">
-                    <FaPhone className="detail-icon" />
-                    <div className="detail-text">
-                      <p>
-                        <a href={`tel:${resource.phone.replace(/\D/g, '')}`}>
-                          {formatPhone(resource.phone)}
-                        </a>
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                {resource.website && (
-                  <div className="detail-item">
-                    <FaGlobe className="detail-icon" />
-                    <div className="detail-text">
-                      <p>
-                        <a 
-                          href={resource.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          Visit Website <FaExternalLinkAlt size={12} />
-                        </a>
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                {resource.hours && (
-                  <div className="detail-item">
-                    <FaClock className="detail-icon" />
-                    <div className="detail-text">
-                      <p>{resource.hours}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="features-section">
-            <h2>Features</h2>
-            <div className="features-grid">
-              <div className={`feature-card ${resource.accepts_uninsured ? 'active' : 'inactive'}`}>
-                <FaCheckCircle className={`feature-icon ${resource.accepts_uninsured ? 'active' : 'inactive'}`} />
-                <h3>Accepts Uninsured</h3>
-                <p>This resource is available to patients without insurance.</p>
-              </div>
-              
-              <div className={`feature-card ${resource.sliding_scale ? 'active' : 'inactive'}`}>
-                <FaCheckCircle className={`feature-icon ${resource.sliding_scale ? 'active' : 'inactive'}`} />
-                <h3>Sliding Scale Fees</h3>
-                <p>Offers flexible pricing based on income.</p>
-              </div>
-              
-              <div className={`feature-card ${resource.free_care_available ? 'active' : 'inactive'}`}>
-                <FaCheckCircle className={`feature-icon ${resource.free_care_available ? 'active' : 'inactive'}`} />
-                <h3>Free Care Available</h3>
-                <p>Provides free services to eligible patients.</p>
-              </div>
-            </div>
-          </div>
-          
-          {resource.notes && (
-            <div className="detail-section">
-              <h2>Additional Information</h2>
-              <div className="notes-container">
-                <p>{resource.notes}</p>
-              </div>
-            </div>
-          )}
-          
-          <div className="detail-section">
-            <h2>Transit Options</h2>
-            <TransitRoutesTab 
-              resource={resource} 
-              onRoutesFound={handleTransitRoutesFound}
-            />
-          </div>
-          
-          <div className="action-section">
-            <div className="action-buttons">
-              {resource.phone && (
+              {hasMap && (
                 <a 
-                  href={`tel:${resource.phone.replace(/\D/g, '')}`} 
-                  className="action-button phone"
-                >
-                  <FaPhone /> Call
-                </a>
-              )}
-              
-              {resource.website && (
-                <a 
-                  href={resource.website} 
-                  target="_blank" 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`}
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="action-button website"
+                  className="directions-link"
                 >
-                  <FaGlobe /> Visit Website
+                  <FaDirections /> Get Directions
                 </a>
               )}
-              
-              <button 
-                className="action-button print"
-                onClick={() => window.print()}
-              >
-                Print Details
-              </button>
             </div>
           </div>
         </div>
+      )}
+      
+      <div className="resource-actions-mobile">
+        {resource.phone && (
+          <a href={`tel:${resource.phone.replace(/\D/g, '')}`} className="action-button phone-button">
+            <FaPhone /> Call
+          </a>
+        )}
+        {hasMap && (
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="action-button directions-button"
+          >
+            <FaDirections /> Directions
+          </a>
+        )}
+        {resource.website && (
+          <a 
+            href={resource.website} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="action-button website-button"
+          >
+            <FaGlobe /> Website
+          </a>
+        )}
       </div>
     </div>
   );

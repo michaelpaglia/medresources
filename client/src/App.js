@@ -1,12 +1,11 @@
-// client/src/App.js
+// client/src/App.js - Update the imports section
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
-// Import the improved pages instead of the old ones
 import ResourceSearchPage from './pages/ResourceSearchPage';
-import ImprovedResourceDetailPage from './pages/ImprovedResourceDetailPage'; // New component
+import ImprovedResourceDetailPage from './pages/ImprovedResourceDetailPage';
 import EligibilityScreener from './pages/EligibilityScreener';
 import AboutPage from './pages/AboutPage';
 import AdminDataLoader from './pages/AdminDataLoader';

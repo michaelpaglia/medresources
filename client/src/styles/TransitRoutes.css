@@ -3,120 +3,130 @@
   padding: 16px 0;
 }
 
-.transit-intro {
-  margin-bottom: 16px;
-  color: #5f6368;
+.transit-search-section {
+  margin-bottom: 20px;
 }
 
 .transit-search-form {
-  margin-bottom: 16px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
 .input-container {
   position: relative;
-  width: 100%;
-  margin-bottom: 16px;
-}
-
-.input-group {
-  display: flex;
-  align-items: center;
-  background-color: #f1f3f4;
-  border-radius: 24px;
-  padding: 0 16px;
-  transition: background-color 0.2s;
-}
-
-.input-group:focus-within {
-  background-color: white;
-  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+  flex: 1;
 }
 
 .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   color: #5f6368;
-  margin-right: 12px;
-  flex-shrink: 0;
 }
 
-.transit-search-form input {
-  flex: 1;
-  padding: 12px 0;
-  border: none;
+.address-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px 0 40px;
+  font-size: 16px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
   outline: none;
-  background: transparent;
-  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.input-group input::placeholder {
-  color: #80868b;
+.address-input:focus {
+  border-color: #4285F4;
+  box-shadow: 0 0 0 1px rgba(66, 133, 244, 0.3);
 }
 
-/* Removed autocomplete styling for freeform search */
-
-.transit-search-form button {
-  background-color: #1a73e8;
+.transit-button {
+  height: 44px;
+  padding: 0 16px;
+  background-color: #4285F4;
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 8px 16px;
-  font-size: 14px;
+  border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
-.transit-search-form button:hover {
-  background-color: #1765cc;
+.transit-button:hover {
+  background-color: #1a73e8;
 }
 
-.transit-search-form button:disabled {
+.transit-button:disabled {
   background-color: #9aa0a6;
   cursor: not-allowed;
 }
 
-.error-message {
-  background-color: #fce8e6;
-  color: #c5221f;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
+.transit-error-message {
+  color: #d93025;
+  font-size: 14px;
+  margin-top: 8px;
 }
 
-.info-message {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
+.suggestion-message {
+  margin-top: 8px;
+  color: #4285F4;
+  font-size: 14px;
 }
 
-/* Hide duplicate map */
-.transit-map-container {
-  display: none;
-}
-
-.transit-routes-list {
-  margin-top: 16px;
-}
-
-.transit-routes-list h3 {
-  margin-bottom: 12px;
-  font-size: 16px;
+.suggestion-button {
+  background: none;
+  border: none;
+  color: #4285F4;
+  text-decoration: underline;
   font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+}
+
+.suggestion-button:hover {
+  color: #1a73e8;
+}
+
+.transit-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #5f6368;
+}
+
+.transit-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(66, 133, 244, 0.2);
+  border-top-color: #4285F4;
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spinner {
+  to {transform: rotate(360deg);}
+}
+
+.transit-results h3 {
+  font-size: 16px;
   color: #202124;
+  margin-bottom: 12px;
+  font-weight: 500;
 }
 
 .transit-route-card {
-  background-color: #f8f9fa;
+  background-color: white;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.transit-route-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 6px rgba(60, 64, 67, 0.2);
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
+  border-left: 4px solid #4285F4;
 }
 
 .route-header {
@@ -126,163 +136,70 @@
 }
 
 .route-icon {
-  color: #1a73e8;
-  margin-right: 12px;
-  font-size: 20px;
-  flex-shrink: 0;
+  color: #4285F4;
+  font-size: 18px;
+  margin-right: 10px;
 }
 
 .route-header h4 {
   margin: 0;
   font-size: 16px;
-  font-weight: 500;
   flex: 1;
 }
 
 .route-time {
-  display: flex;
-  align-items: center;
   color: #5f6368;
   font-size: 14px;
+  display: flex;
+  align-items: center;
 }
 
 .time-icon {
   margin-right: 4px;
-  color: #5f6368;
 }
 
 .route-details {
-  font-size: 14px;
-  color: #5f6368;
+  margin-bottom: 12px;
 }
 
-.route-stop {
+.route-step {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 8px;
   padding: 8px;
-  background-color: white;
+  background-color: #f8f9fa;
   border-radius: 4px;
 }
 
-.walk-icon, .bus-icon {
-  color: #5f6368;
+.step-icon {
   margin-right: 8px;
-  margin-top: 3px;
-  flex-shrink: 0;
-}
-
-.bus-icon {
-  color: #1a73e8;
+  color: #5f6368;
 }
 
 .route-details-link {
-  display: inline-block;
-  color: #1a73e8;
-  margin-top: 8px;
-  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  color: #4285F4;
+  font-size: 14px;
   font-weight: 500;
+  text-decoration: none;
 }
 
 .route-details-link:hover {
   text-decoration: underline;
 }
 
-.no-routes-message {
-  color: #5f6368;
-  font-style: italic;
-  padding: 16px;
-  background-color: #f1f3f4;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.loading-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.transit-empty-state {
   padding: 20px;
-  text-align: center;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top-color: #1a73e8;
-  animation: spin 1s ease-in-out infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Transit Legend Styling */
-.transit-legend {
-  background-color: white;
+  background-color: #f8f9fa;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
-  padding: 12px;
-  margin-top: 12px;
-}
-
-.transit-legend h4 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: #202124;
-}
-
-.legend-items {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.legend-items li {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
+  text-align: center;
   color: #5f6368;
 }
 
-.legend-color {
-  width: 12px;
-  height: 4px;
-  margin-right: 6px;
-  border-radius: 2px;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .route-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .route-time {
-    margin-top: 8px;
-  }
-  
-  .transit-legend {
-    max-width: 100%;
-    overflow-x: auto;
-  }
+.transit-hint {
+  font-size: 14px;
+  font-style: italic;
+  margin-top: 8px;
+  color: #80868b;
 }

@@ -320,4 +320,49 @@
   color: #9aa0a6;
   margin-right: 12px;
 }
+
+/* Add this to your styles/Navbar.css file */
+.navbar-search .search-input {
+  flex: 1;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  width: 100%;
+  color: #202124;
+}
+
+.search-box {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background-color: #f1f3f4;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  transition: all 0.2s ease;
+}
+
+.search-box:focus-within {
+  background-color: white;
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+  border-color: #4285F4;
+}
+
+.clear-search {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #70757a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: auto;
+}
+
+
 }
