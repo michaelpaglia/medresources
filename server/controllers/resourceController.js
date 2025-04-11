@@ -471,7 +471,34 @@ async function testOpenAI(req, res) {
     res.status(500).json({ error: 'Failed to test OpenAI connection' });
   }
 }
-
+/**
+ * Refresh provider display name
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function refreshProviderName(req, res) {
+  try {
+    const { id } = req.params;
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid resource ID' });
+    }
+    
+    const npiService = require('../services/npiHealthcareService');
+    const updatedResource = await npiService.refreshProviderDisplayName(parseInt(id));
+    
+    res.json({
+      success: true,
+      resource: updatedResource
+    });
+  } catch (error) {
+    console.error('Error refreshing provider name:', error);
+    res.status(500).json({
+      error: 'Failed to refresh provider name',
+      message: error.message
+    });
+  }
+}
 // Export all the functions
 module.exports = {
   getAllResources,
@@ -482,5 +509,6 @@ module.exports = {
   loadResourcesForLocation,
   testOpenAI,
   enrichResourceLocation,
-  updateMissingCoordinates
+  updateMissingCoordinates,
+  refreshProviderName
 }

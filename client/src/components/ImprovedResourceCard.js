@@ -12,7 +12,9 @@ import '../styles/ImprovedResourceCard.css';
 const ImprovedResourceCard = ({ resource }) => {
   const { 
     id, 
-    name, 
+    name,
+    display_name,
+    original_name,
     address_line1, 
     city, 
     state, 
@@ -26,6 +28,9 @@ const ImprovedResourceCard = ({ resource }) => {
     free_care_available,
     notes
   } = resource;
+
+  // Use display_name if available, otherwise fallback to name
+  const displayName = display_name || name;
 
   // Resource type mapping
   const resourceTypes = {
@@ -68,10 +73,18 @@ const ImprovedResourceCard = ({ resource }) => {
     return text.substring(0, maxLength) + '...';
   };
 
+  // Show original name tooltip if different from display name
+  const showOriginalName = original_name && displayName !== original_name;
+
   return (
     <div className="resource-card">
       <div className="card-header">
-        <h2 className="card-title">{name}</h2>
+        <h2 className="card-title">
+          {displayName}
+          {showOriginalName && (
+            <span className="official-name-tooltip" title={`Official name: ${original_name}`}>ⓘ</span>
+          )}
+        </h2>
         <span 
           className="resource-type-tag"
           style={{ 

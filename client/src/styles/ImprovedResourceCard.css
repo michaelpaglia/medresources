@@ -173,3 +173,16 @@
     width: 100%;
   }
 }
+
+.official-name-tooltip {
+  font-size: 12px;
+  color: #5f6368;
+  margin-left: 5px;
+  cursor: help;
+  font-weight: normal;
+  vertical-align: super;
+}
+
+.official-name-tooltip:hover {
+  color: #4285F4;
+}

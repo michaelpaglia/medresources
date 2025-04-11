@@ -1,6 +1,6 @@
 // pages/EligibilityScreener.js
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   FaArrowRight, 
   FaArrowLeft, 
@@ -10,15 +10,17 @@ import {
   FaUser,
   FaDollarSign,
   FaMedkit,
-  FaHospital,
   FaShieldAlt,
-  FaHeart
+  FaHeart,
+  FaPills, 
+  FaTooth, 
+  FaEye, 
+  FaBrain, 
+  FaFemale
 } from 'react-icons/fa';
 import '../styles/ImprovedEligibilityScreener.css';
-import { FaPills, FaTooth, FaEye, FaBrain, FaFemale } from 'react-icons/fa';
 
 const EligibilityScreener = () => {
-  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [answers, setAnswers] = useState({
     income: '',
@@ -88,46 +90,16 @@ const EligibilityScreener = () => {
     return sizeMap[sizeCode] || sizeCode;
   };
 
-  // Submit form data to the backend API
-  const submitScreener = async () => {
+  // For demonstration, use this mock function
+  const handleSubmitWithMockData = () => {
     setIsSubmitting(true);
-    setError(null);
     
-    try {
-      // Format data for the API
-      const formattedData = {
-        income: getIncomeDescription(answers.income),
-        familySize: getFamilySizeDescription(answers.familySize),
-        insurance: answers.insurance,
-        employed: answers.employed,
-        veteran: answers.veteran,
-        conditions: answers.conditions,
-        age: answers.age,
-        gender: answers.gender
-      };
-      
-      // Make the API call
-      const response = await fetch('/api/eligibility/recommendations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formattedData)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate recommendations');
-      }
-      
-      const data = await response.json();
-      setResults(data);
-      setCurrentStep(5); // Move to results step
-    } catch (err) {
-      console.error('Error submitting eligibility data:', err);
-      setError('Something went wrong. Please try again later.');
-    } finally {
+    // Simulate API delay
+    setTimeout(() => {
+      setResults(mockRecommendations());
+      setCurrentStep(5);
       setIsSubmitting(false);
-    }
+    }, 1500);
   };
 
   // Check if the step is valid to proceed
@@ -146,10 +118,9 @@ const EligibilityScreener = () => {
     }
   };
 
-  // For demonstration, if the API isn't ready, use this mock function
+  // Mock data that simulates what the API would return
   const mockRecommendations = () => {
-    // Mock data that simulates what the API would return
-    const mockData = {
+    return {
       eligiblePrograms: [
         {
           name: "Medicaid",
@@ -211,20 +182,6 @@ const EligibilityScreener = () => {
         }
       ]
     };
-    
-    return mockData;
-  };
-
-  // If API isn't ready, use this function instead of submitScreener
-  const handleSubmitWithMockData = () => {
-    setIsSubmitting(true);
-    
-    // Simulate API delay
-    setTimeout(() => {
-      setResults(mockRecommendations());
-      setCurrentStep(5);
-      setIsSubmitting(false);
-    }, 1500);
   };
 
   // Render the current step
@@ -560,7 +517,7 @@ const EligibilityScreener = () => {
                   <div className="results-section">
                     <h3>Recommended Medical Resources</h3>
                     <div className="resource-cards">
-                      {results.resourceDetails.map((resource, index) => {
+                      {results.resourceDetails.map((resource) => {
                         // Find the matching recommendation to get the reason
                         const recommendation = results.recommendedResources.find(rec => rec.id === resource.id);
                         
@@ -707,7 +664,7 @@ const EligibilityScreener = () => {
             ) : (
               <button 
                 className="button primary-button submit-button" 
-                onClick={handleSubmitWithMockData}  // Change to submitScreener when API is ready
+                onClick={handleSubmitWithMockData}  // Using mock data function
                 disabled={isSubmitting || !canProceed()}
                 type="button"
               >

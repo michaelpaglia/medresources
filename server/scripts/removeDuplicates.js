@@ -5,70 +5,136 @@ const db = require('../db/connection');
  */
 async function removeDuplicateResources() {
   try {
-    console.log('Starting duplicate resource removal process...');
+    console.log('Starting enhanced duplicate resource removal process...');
 
     // Begin transaction
     await db.query('BEGIN');
 
-    // Find and remove duplicates
+    // Find potential duplicates with more flexible matching
     const duplicateQuery = `
-      WITH duplicate_cte AS (
+      WITH normalized_resources AS (
         SELECT 
           id,
           LOWER(TRIM(name)) AS normalized_name,
           LOWER(TRIM(COALESCE(address_line1, ''))) AS normalized_address,
+          LOWER(TRIM(COALESCE(phone, ''))) AS normalized_phone,
           name,
           address_line1,
-          ROW_NUMBER() OVER (
-            PARTITION BY 
-              LOWER(TRIM(name)), 
-              LOWER(TRIM(COALESCE(address_line1, '')))
-            ORDER BY id
-          ) AS row_num
+          phone
         FROM resources
+      ),
+      potential_duplicates AS (
+        SELECT 
+          r1.id AS id1,
+          r2.id AS id2,
+          r1.normalized_name AS name1,
+          r2.normalized_name AS name2,
+          r1.normalized_address AS addr1,
+          r2.normalized_address AS addr2,
+          r1.normalized_phone AS phone1,
+          r2.normalized_phone AS phone2
+        FROM normalized_resources r1
+        JOIN normalized_resources r2 ON 
+          r1.id < r2.id AND
+          (
+            (r1.normalized_name = r2.normalized_name AND r1.normalized_address = r2.normalized_address) OR
+            (r1.normalized_phone != '' AND r1.normalized_phone = r2.normalized_phone AND 
+             r1.normalized_address = r2.normalized_address) OR
+            (r1.normalized_address != '' AND r1.normalized_name = r2.normalized_name AND
+             r1.normalized_phone = r2.normalized_phone)
+          )
       )
-      SELECT 
-        array_agg(id ORDER BY id) AS duplicate_ids,
-        MAX(name) AS name,
-        MAX(address_line1) AS address_line1,
-        COUNT(*) AS duplicate_count
-      FROM duplicate_cte
-      WHERE row_num > 1
-      GROUP BY 
-        normalized_name, 
-        normalized_address
+      SELECT * FROM potential_duplicates
+      ORDER BY id1;
     `;
 
     const duplicatesResult = await db.query(duplicateQuery);
     const duplicates = duplicatesResult.rows;
 
-    console.log(`Found ${duplicates.length} sets of duplicates`);
+    console.log(`Found ${duplicates.length} potential duplicate pairs`);
 
-    // Process each set of duplicates
-    for (const dupSet of duplicates) {
-      console.log(`Duplicate set: ${dupSet.name} (${dupSet.address_line1 || 'No address'}) - ${dupSet.duplicate_count} duplicates`);
+    // Group duplicates to handle cases where multiple rows match
+    const duplicateGroups = new Map();
+
+    for (const dup of duplicates) {
+      // Always keep the lower ID as the primary record
+      const primaryId = dup.id1;
+      const duplicateId = dup.id2;
       
-      // Keep the first ID, remove the rest
-      const idsToKeep = [dupSet.duplicate_ids[0]];
-      const idsToDelete = dupSet.duplicate_ids.slice(1);
+      // Add to group or create new group
+      if (duplicateGroups.has(primaryId)) {
+        duplicateGroups.get(primaryId).push(duplicateId);
+      } else {
+        duplicateGroups.set(primaryId, [duplicateId]);
+      }
+    }
 
-      console.log(`Keeping ID ${idsToKeep[0]}, deleting IDs: ${idsToDelete.join(', ')}`);
-
-      // Delete associated records in related tables
+    // Process each group of duplicates
+    for (const [primaryId, duplicateIds] of duplicateGroups.entries()) {
+      console.log(`Processing duplicate group: Primary ID ${primaryId}, duplicates: ${duplicateIds.join(', ')}`);
+      
+      // Merge any important data from duplicates to primary
+      // This ensures we don't lose valuable information
       await db.query(`
-        DELETE FROM resource_services WHERE resource_id = ANY($1);
-        DELETE FROM resource_insurances WHERE resource_id = ANY($1);
-        DELETE FROM resource_languages WHERE resource_id = ANY($1);
-        DELETE FROM resource_transportation WHERE resource_id = ANY($1);
-        DELETE FROM resource_feedback WHERE resource_id = ANY($1);
-        DELETE FROM resources WHERE id = ANY($1);
-      `, [idsToDelete]);
+        UPDATE resources r1
+        SET 
+          notes = CASE WHEN r1.notes IS NULL OR r1.notes = '' 
+                      THEN COALESCE(r2.notes, r1.notes)
+                      ELSE r1.notes || ' | ' || COALESCE(r2.notes, '')
+                 END,
+          website = COALESCE(r1.website, r2.website),
+          hours = COALESCE(r1.hours, r2.hours),
+          accepts_uninsured = r1.accepts_uninsured OR COALESCE(r2.accepts_uninsured, false),
+          sliding_scale = r1.sliding_scale OR COALESCE(r2.sliding_scale, false),
+          free_care_available = r1.free_care_available OR COALESCE(r2.free_care_available, false),
+          updated_at = NOW()
+        FROM resources r2
+        WHERE r1.id = $1 AND r2.id = ANY($2)
+      `, [primaryId, duplicateIds]);
+      
+      // Delete the duplicate entries
+      await db.query(`
+        -- First, reassign any services from duplicates to primary
+        INSERT INTO resource_services (resource_id, service_id)
+        SELECT $1, service_id FROM resource_services
+        WHERE resource_id = ANY($2)
+        ON CONFLICT (resource_id, service_id) DO NOTHING;
+        
+        -- Same for insurances
+        INSERT INTO resource_insurances (resource_id, insurance_id)
+        SELECT $1, insurance_id FROM resource_insurances
+        WHERE resource_id = ANY($2)
+        ON CONFLICT (resource_id, insurance_id) DO NOTHING;
+        
+        -- Same for languages
+        INSERT INTO resource_languages (resource_id, language_id)
+        SELECT $1, language_id FROM resource_languages
+        WHERE resource_id = ANY($2)
+        ON CONFLICT (resource_id, language_id) DO NOTHING;
+        
+        -- Same for transportation
+        INSERT INTO resource_transportation (resource_id, transportation_id, notes)
+        SELECT $1, transportation_id, notes FROM resource_transportation
+        WHERE resource_id = ANY($2)
+        ON CONFLICT (resource_id, transportation_id) DO NOTHING;
+        
+        -- Now delete all references to duplicate resources
+        DELETE FROM resource_services WHERE resource_id = ANY($2);
+        DELETE FROM resource_insurances WHERE resource_id = ANY($2);
+        DELETE FROM resource_languages WHERE resource_id = ANY($2);
+        DELETE FROM resource_transportation WHERE resource_id = ANY($2);
+        DELETE FROM resource_feedback WHERE resource_id = ANY($2);
+        
+        -- Finally delete the duplicate resources
+        DELETE FROM resources WHERE id = ANY($2);
+      `, [primaryId, duplicateIds]);
     }
 
     // Commit transaction
     await db.query('COMMIT');
 
-    console.log('Duplicate resource removal completed successfully!');
+    console.log('Enhanced duplicate resource removal completed successfully!');
+    return duplicateGroups.size;
   } catch (error) {
     // Rollback transaction on error
     await db.query('ROLLBACK');

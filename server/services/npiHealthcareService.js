@@ -1,6 +1,8 @@
 // server/services/npiHealthcareService.js
 
 const axios = require('axios');
+const db = require('../db/connection');
+const providerNameService = require('./providerNameEnhancementService');
 require('dotenv').config();
 
 // API keys should be stored in environment variables
@@ -129,8 +131,59 @@ async function findProvidersInZipCode(zipCode, specialtyType = '') {
         // Continue with next provider
       }
     }
+
+    // Enhance provider names with commonly known brands
+    const enhancedProviders = [];
     
-    return providers;
+    for (const provider of providers) {
+      try {
+        // First check if we already have this mapping cached
+        const cachedMapping = await db.query(
+          'SELECT display_name FROM provider_name_mappings WHERE npi = $1 OR (original_name = $2) OR (address_line1 = $3 AND zip = $4)',
+          [provider.npi, provider.name, provider.address_line1, provider.zip]
+        );
+        
+        if (cachedMapping.rows.length > 0) {
+          // Use cached name
+          provider.display_name = cachedMapping.rows[0].display_name;
+          provider.original_name = provider.name;
+          enhancedProviders.push(provider);
+          console.log(`Using cached name mapping: ${provider.name} -> ${provider.display_name}`);
+        } else {
+          // Get enhanced name
+          const enhancedProvider = await providerNameService.enhanceProviderName(provider);
+          
+          // Only cache if the name was actually enhanced
+          if (enhancedProvider.display_name !== enhancedProvider.name) {
+            // Cache the mapping for future use
+            await db.query(
+              'INSERT INTO provider_name_mappings (npi, original_name, display_name, address_line1, zip, source) VALUES ($1, $2, $3, $4, $5, $6)',
+              [
+                provider.npi, 
+                provider.name, 
+                enhancedProvider.display_name, 
+                provider.address_line1, 
+                provider.zip,
+                enhancedProvider.nameSource || 'ai'
+              ]
+            );
+            
+            console.log(`Created new name mapping: ${provider.name} -> ${enhancedProvider.display_name}`);
+          }
+          
+          enhancedProviders.push(enhancedProvider);
+        }
+      } catch (error) {
+        console.error(`Error enhancing provider name for ${provider.name}:`, error);
+        // If enhancement fails, use the original provider
+        enhancedProviders.push(provider);
+      }
+      
+      // Add a small delay to avoid overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    return enhancedProviders;
   } catch (error) {
     console.error(`Error finding providers in ZIP code ${zipCode}:`, error);
     return [];
@@ -258,10 +311,63 @@ async function getZipCodeCoordinates(zipCode) {
   };
 }
 
+/**
+ * Refresh a provider's display name
+ * @param {number} resourceId - ID of the resource to refresh
+ * @returns {Promise<Object>} Updated resource
+ */
+async function refreshProviderDisplayName(resourceId) {
+  try {
+    // Get the resource
+    const resourceResult = await db.query('SELECT * FROM resources WHERE id = $1', [resourceId]);
+    
+    if (resourceResult.rows.length === 0) {
+      throw new Error('Resource not found');
+    }
+    
+    const resource = resourceResult.rows[0];
+    
+    // Get enhanced name
+    const enhancedResource = await providerNameService.enhanceProviderName(resource);
+    
+    // Update the resource
+    await db.query(
+      'UPDATE resources SET display_name = $1, original_name = $2, updated_at = NOW() WHERE id = $3',
+      [enhancedResource.display_name, resource.name, resourceId]
+    );
+    
+    // Update or create mapping
+    await db.query(
+      `INSERT INTO provider_name_mappings 
+        (npi, original_name, display_name, address_line1, zip, source)
+      VALUES
+        ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (npi) 
+      DO UPDATE SET
+        display_name = EXCLUDED.display_name,
+        updated_at = NOW()`,
+      [
+        resource.npi, 
+        resource.name, 
+        enhancedResource.display_name, 
+        resource.address_line1, 
+        resource.zip,
+        enhancedResource.nameSource || 'manual'
+      ]
+    );
+    
+    return enhancedResource;
+  } catch (error) {
+    console.error(`Error refreshing provider display name for resource ${resourceId}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   findZipCodesInRadius,
   findProvidersInZipCode,
   searchProvidersBySpecialty,
   findProvidersInRadius,
-  getZipCodeCoordinates
+  getZipCodeCoordinates,
+  refreshProviderDisplayName
 };
