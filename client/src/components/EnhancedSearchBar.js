@@ -1,5 +1,3 @@
-// client/src/components/EnhancedSearchBar.js - Fixed version
-
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSearch } from 'react-icons/fa';
@@ -19,8 +17,11 @@ const EnhancedSearchBar = ({ onSearch, placeholder = "Search for healthcare reso
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
+      // Add console log for debugging
+      console.log('Submitting search for:', searchTerm.trim());
+      
       if (onSearch) {
-        onSearch(searchTerm);
+        onSearch(searchTerm.trim());
       } else {
         navigate(`/search?query=${encodeURIComponent(searchTerm.trim())}`);
       }

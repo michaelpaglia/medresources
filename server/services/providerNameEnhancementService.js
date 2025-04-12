@@ -139,7 +139,71 @@ function isSimilarName(name1, name2) {
   
   return n1 === n2 || n1.includes(n2) || n2.includes(n1);
 }
+/**
+ * Format provider name with consistent casing
+ * @param {string} name - Provider name to format
+ * @returns {string} Formatted provider name
+ */
+function formatProviderName(name) {
+  if (!name) return '';
+  
+  // Convert to title case
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => {
+      // Keep certain words lowercase
+      const lowercaseWords = ['of', 'and', 'the', 'in', 'at', 'by', 'for', 'with', 'a', 'an'];
+      if (lowercaseWords.includes(word)) return word;
+      
+      // Keep certain acronyms uppercase
+      const upperCaseWords = ['md', 'pc', 'llc', 'llp', 'pa', 'dds', 'np', 'rn', 'ent', 'obgyn'];
+      if (upperCaseWords.includes(word.toLowerCase())) return word.toUpperCase();
+      
+      // Capitalize first letter
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+}
 
+// Modify the enhanceProviderName function
+async function enhanceProviderName(provider) {
+  try {
+    // First check our known chains mapping
+    const chainMatch = matchAgainstKnownChains(provider);
+    if (chainMatch) {
+      return {
+        ...provider,
+        display_name: chainMatch,
+        original_name: provider.name,
+        nameSource: 'chain_match'
+      };
+    }
+    
+    // Use OpenAI to determine common name using RAG
+    const aiSuggestedName = await getCommonNameWithRAG(provider);
+    if (aiSuggestedName) {
+      return {
+        ...provider,
+        display_name: formatProviderName(aiSuggestedName),
+        original_name: provider.name,
+        nameSource: 'ai'
+      };
+    }
+    
+    // Default to formatting the original name
+    return {
+      ...provider,
+      display_name: formatProviderName(provider.name),
+      original_name: provider.name,
+      nameSource: 'format_only'
+    };
+  } catch (error) {
+    console.error('Error enhancing provider name:', error);
+    return provider; // Return original provider if enhancement fails
+  }
+}
 module.exports = {
-  enhanceProviderName
+  enhanceProviderName,
+  formatProviderName
 };

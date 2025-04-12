@@ -3,25 +3,64 @@
 
 /* Fix for dropdown visibility issues */
 .screener-container {
-    overflow: visible !important;
-  }
-  
-  .screener-step {
-    overflow: visible !important;
-  }
-  
-  /* Ensure dropdown options appear above other elements */
+  overflow: visible !important;
+}
+
+.screener-step {
+  overflow: visible !important;
+  position: relative !important; /* Ensure proper positioning context */
+}
+
+/* Enhanced dropdown styling */
+.form-group select {
+  position: relative;
+  z-index: 1000; /* Higher z-index to appear above other elements */
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  font-size: 16px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  background-color: white;
+  color: #202124;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z' fill='%235F6368'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+/* Container for dropdown to ensure proper positioning */
+.form-group {
+  position: relative;
+  z-index: 10; /* Base z-index for form groups */
+}
+
+/* Style dropdown options for better visibility */
+.form-group select option {
+  padding: 8px 12px;
+  background-color: white;
+  color: #202124;
+}
+
+/* Additional fixes for Safari/iOS */
+@supports (-webkit-touch-callout: none) {
   .form-group select {
-    position: relative;
-    z-index: 100;
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding-right: 30px; /* Space for dropdown arrow */
   }
   
-  /* Style dropdown options for better visibility */
-  .form-group select option {
-    padding: 8px 12px;
-    background-color: white;
-    color: #202124;
+  /* Improve dropdown positioning */
+  .step-content .form-group select,
+  .screener-step .form-group select {
+    padding: 0 35px 0 12px;
   }
+}
+
+/* Ensure navigation buttons don't overlap with dropdowns */
+.navigation-buttons {
+  position: relative;
+  z-index: 5; /* Lower than form elements */
+}
   
   /* Fix for mobile browsers */
   @media (max-width: 768px) {

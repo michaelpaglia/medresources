@@ -78,6 +78,9 @@ const ResourceSearchPage = () => {
       url += '/search?' + params.join('&');
     }
     
+    // For debugging - log the URL being fetched
+    console.log('Fetching resources from:', url);
+    
     fetch(url)
       .then(response => {
         if (!response.ok) throw new Error('Failed to fetch resources');
@@ -90,15 +93,15 @@ const ResourceSearchPage = () => {
         setFilteredResources(cleanedData);
         setIsLoading(false);
         
-        // Clear the URL parameters after loading
-        clearUrlParams();
+        // REMOVE THIS LINE to keep URL parameters visible
+        // clearUrlParams();
       })
       .catch(error => {
         console.error('Error fetching resources:', error);
         setError('Failed to load resources. Please try again later.');
         setIsLoading(false);
       });
-  }, [clearUrlParams, cleanResourceData]);
+  }, [cleanResourceData]);
 
   // Handle text search
   const handleSearchSubmit = (e) => {

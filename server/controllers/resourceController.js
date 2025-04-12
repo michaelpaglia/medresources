@@ -359,98 +359,34 @@ async function updateMissingCoordinates(req, res) {
   }
 }
 
-// Load resources for a location (admin endpoint)
+// Add this to your resourceController.js
+
+/**
+ * Load resources for a location (admin endpoint)
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
 async function loadResourcesForLocation(req, res) {
   try {
-    const { zipCode, radius = 10 } = req.body;
+    const { zipCode, radius = 10, specialty = '' } = req.body;
     
     // Validate input
     if (!zipCode || !/^\d{5}$/.test(zipCode)) {
       return res.status(400).json({ error: 'Invalid ZIP code' });
     }
 
-    // Use NPI service to find providers
-    const npiHealthcareService = require('../services/npiHealthcareService');
-    const providers = await npiHealthcareService.findProvidersInZipCode(zipCode);
+    // Import the improved data loader
+    const { loadResourcesForLocation: dataLoader } = require('../scripts/improvedDataLoader');
+    
+    console.log(`Admin request to load resources for ZIP: ${zipCode}, specialty: ${specialty || 'Any'}`);
+    
+    // Call the loader with the requested ZIP code
+    const result = await dataLoader([zipCode], specialty);
 
-    // Track insertion results
-    const insertedResources = [];
-    const skippedResources = [];
-
-    // Insert or update providers
-    for (const provider of providers) {
-      try {
-        // Try to geocode if coordinates not provided
-        if (!provider.latitude || !provider.longitude) {
-          const coordinates = await geocodingService.geocodeAddress(provider);
-          if (coordinates) {
-            provider.latitude = coordinates.latitude;
-            provider.longitude = coordinates.longitude;
-          }
-        }
-
-        // Insert or update resource
-        const result = await db.query(`
-          INSERT INTO resources (
-            name, resource_type_id, address_line1, address_line2, 
-            city, state, zip, phone, website, email, hours, 
-            eligibility_criteria, accepts_uninsured, sliding_scale, 
-            free_care_available, notes, latitude, longitude,
-            created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 
-            $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
-          ON CONFLICT (name, address_line1) 
-          DO UPDATE SET 
-            resource_type_id = EXCLUDED.resource_type_id,
-            phone = EXCLUDED.phone,
-            website = EXCLUDED.website,
-            email = EXCLUDED.email,
-            hours = EXCLUDED.hours,
-            latitude = EXCLUDED.latitude,
-            longitude = EXCLUDED.longitude,
-            updated_at = NOW()
-          RETURNING *
-        `, [
-          provider.name,
-          provider.resource_type_id,
-          provider.address_line1,
-          provider.address_line2,
-          provider.city,
-          provider.state,
-          provider.zip,
-          provider.phone,
-          provider.website,
-          provider.email,
-          provider.hours,
-          provider.eligibility_criteria,
-          false, // Default to false for uninsured
-          false, // Default to false for sliding scale
-          false, // Default to false for free care
-          provider.notes,
-          provider.latitude,
-          provider.longitude
-        ]);
-
-        insertedResources.push(result.rows[0]);
-      } catch (error) {
-        skippedResources.push({ 
-          provider, 
-          error: error.message 
-        });
-      }
-    }
-
-    res.json({
-      message: 'Resources loaded successfully',
-      totalProviders: providers.length,
-      insertedCount: insertedResources.length,
-      skippedCount: skippedResources.length,
-      insertedResources,
-      skippedResources
-    });
+    res.json(result);
   } catch (error) {
     console.error('Error loading resources for location:', error);
-    res.status(500).json({ error: 'Failed to load resources' });
+    res.status(500).json({ error: 'Failed to load resources', message: error.message });
   }
 }
 
@@ -499,6 +435,9 @@ async function refreshProviderName(req, res) {
     });
   }
 }
+
+
+
 // Export all the functions
 module.exports = {
   getAllResources,

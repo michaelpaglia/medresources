@@ -76,7 +76,7 @@ async function findTransitRoutes(req, res) {
         startLocation.longitude,
         parseFloat(resourceLat),
         parseFloat(resourceLon),
-        0.75 // Smaller radius for much faster results
+        1.25 // Smaller radius for much faster results
       );
     });
     
@@ -143,7 +143,7 @@ async function findTransitRoutesByCoords(req, res) {
       parseFloat(startLon),
       parseFloat(endLat),
       parseFloat(endLon),
-      0.75
+      1.25
     );
 
     console.log(`Found ${transitOptions.length} transit options`);

@@ -15,12 +15,18 @@ async function seedDatabaseWithZipCodes(zipCodes, radiusMiles = 10) {
     let totalAdded = 0;
     
     // Define specialties to search for
+    // Define specialties to search for
     const specialties = [
       '', // General search
       'primary care',
       'family medicine',
       'internal medicine',
       'pediatrics',
+      'pediatrician',
+      'children healthcare', // Added pediatric terms
+      'child health',        // Added pediatric terms
+      'adolescent medicine', // Added pediatric terms
+      'infant care',         // Added pediatric terms
       'pharmacy',
       'dentist',
       'mental health',

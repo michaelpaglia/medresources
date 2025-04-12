@@ -362,11 +362,51 @@ async function refreshProviderDisplayName(resourceId) {
     throw error;
   }
 }
-
+/**
+ * Find pediatric providers in a given ZIP code
+ * @param {string} zipCode - ZIP code to search in
+ * @returns {Promise<Array>} Array of pediatric healthcare providers
+ */
+async function findPediatricProvidersInZipCode(zipCode) {
+  try {
+    console.log('Finding pediatric providers in ZIP code:', zipCode);
+    
+    const pediatricTerms = [
+      'pediatrics',
+      'pediatrician',
+      'children',
+      'child',
+      'infant',
+      'adolescent'
+    ];
+    
+    let allProviders = [];
+    
+    // Search for each pediatric term
+    for (const term of pediatricTerms) {
+      console.log(`Searching for '${term}' in ZIP code ${zipCode}`);
+      const providers = await findProvidersInZipCode(zipCode, term);
+      allProviders = [...allProviders, ...providers];
+      
+      // Add a small delay to avoid overwhelming the API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    // Remove duplicates based on NPI
+    const uniqueProviders = removeDuplicates(allProviders, 'npi');
+    console.log(`Found ${uniqueProviders.length} unique pediatric providers`);
+    
+    return uniqueProviders;
+  } catch (error) {
+    console.error('Error finding pediatric providers:', error);
+    return [];
+  }
+}
 module.exports = {
   findZipCodesInRadius,
   findProvidersInZipCode,
   searchProvidersBySpecialty,
+  findPediatricProvidersInZipCode,
   findProvidersInRadius,
   getZipCodeCoordinates,
   refreshProviderDisplayName
