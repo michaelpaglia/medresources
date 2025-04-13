@@ -107,13 +107,35 @@ const ResourceSearchPage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     
-    // Perform the search without updating URL
-    if (searchTerm.trim()) {
-      fetchResources(searchTerm, filters.resourceType);
-    } else {
-      fetchResources('', filters.resourceType);
-    }
-  };
+    // Add a console log to verify the function is being called
+    console.log('Search submitted with term:', searchTerm);
+    
+    // Fix the fetch URL construction to ensure proper parameters
+    const queryParams = new URLSearchParams();
+    if (searchTerm.trim()) queryParams.append('query', searchTerm.trim());
+    if (filters.resourceType) queryParams.append('resourceType', filters.resourceType);
+    
+    const url = `/api/resources/search?${queryParams.toString()}`;
+    console.log('Fetching from URL:', url);
+    
+    setIsLoading(true);
+    fetch(url)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch resources');
+        return response.json();
+      })
+      .then(data => {
+        const cleanedData = cleanResourceData(data);
+        setResources(cleanedData);
+        setFilteredResources(cleanedData);
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching resources:', error);
+        setError('Failed to load resources. Please try again later.');
+        setIsLoading(false);
+      });
+  }
 
   // Handle location-based search
   const handleLocationSearch = (e) => {

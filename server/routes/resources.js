@@ -23,6 +23,9 @@ router.post('/update-coordinates', resourceController.updateMissingCoordinates);
 router.post('/transit-routes', transitController.findTransitRoutes);
 router.get('/transit-routes', transitController.findTransitRoutesByCoords);
 router.post('/:id/refresh-name', resourceController.refreshProviderName);
+router.post('/blacklist', resourceController.blacklistResource);
+router.delete('/blacklist/:id', resourceController.removeFromBlacklist);
+router.get('/blacklist', resourceController.getBlacklistedResources);
 
 // GET all resources
 router.get('/', resourceController.getAllResources);

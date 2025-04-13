@@ -1,5 +1,5 @@
-// src/pages/AdminDataLoader.js
 import React, { useState } from 'react';
+import ResourceBlacklist from '../components/ResourceBlacklist';
 import '../styles/AdminDataLoader.css';
 
 const AdminDataLoader = () => {
@@ -95,6 +95,7 @@ const AdminDataLoader = () => {
     }
   };
 
+  
   return (
     <div className="admin-data-loader">
       <div className="admin-container">

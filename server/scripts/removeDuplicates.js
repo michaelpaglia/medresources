@@ -1,3 +1,5 @@
+// server/scripts/removeDuplicates.js
+
 const db = require('../db/connection');
 
 /**
@@ -92,42 +94,47 @@ async function removeDuplicateResources() {
         WHERE r1.id = $1 AND r2.id = ANY($2)
       `, [primaryId, duplicateIds]);
       
-      // Delete the duplicate entries
+      // First, reassign any services from duplicates to primary
       await db.query(`
-        -- First, reassign any services from duplicates to primary
         INSERT INTO resource_services (resource_id, service_id)
         SELECT $1, service_id FROM resource_services
         WHERE resource_id = ANY($2)
-        ON CONFLICT (resource_id, service_id) DO NOTHING;
-        
-        -- Same for insurances
+        ON CONFLICT (resource_id, service_id) DO NOTHING
+      `, [primaryId, duplicateIds]);
+      
+      // Same for insurances
+      await db.query(`
         INSERT INTO resource_insurances (resource_id, insurance_id)
         SELECT $1, insurance_id FROM resource_insurances
         WHERE resource_id = ANY($2)
-        ON CONFLICT (resource_id, insurance_id) DO NOTHING;
-        
-        -- Same for languages
+        ON CONFLICT (resource_id, insurance_id) DO NOTHING
+      `, [primaryId, duplicateIds]);
+      
+      // Same for languages
+      await db.query(`
         INSERT INTO resource_languages (resource_id, language_id)
         SELECT $1, language_id FROM resource_languages
         WHERE resource_id = ANY($2)
-        ON CONFLICT (resource_id, language_id) DO NOTHING;
-        
-        -- Same for transportation
+        ON CONFLICT (resource_id, language_id) DO NOTHING
+      `, [primaryId, duplicateIds]);
+      
+      // Same for transportation
+      await db.query(`
         INSERT INTO resource_transportation (resource_id, transportation_id, notes)
         SELECT $1, transportation_id, notes FROM resource_transportation
         WHERE resource_id = ANY($2)
-        ON CONFLICT (resource_id, transportation_id) DO NOTHING;
-        
-        -- Now delete all references to duplicate resources
-        DELETE FROM resource_services WHERE resource_id = ANY($2);
-        DELETE FROM resource_insurances WHERE resource_id = ANY($2);
-        DELETE FROM resource_languages WHERE resource_id = ANY($2);
-        DELETE FROM resource_transportation WHERE resource_id = ANY($2);
-        DELETE FROM resource_feedback WHERE resource_id = ANY($2);
-        
-        -- Finally delete the duplicate resources
-        DELETE FROM resources WHERE id = ANY($2);
+        ON CONFLICT (resource_id, transportation_id) DO NOTHING
       `, [primaryId, duplicateIds]);
+      
+      // Now delete all references to duplicate resources - FIXED VERSION WITH SEPARATE QUERIES
+      await db.query('DELETE FROM resource_services WHERE resource_id = ANY($1)', [duplicateIds]);
+      await db.query('DELETE FROM resource_insurances WHERE resource_id = ANY($1)', [duplicateIds]);
+      await db.query('DELETE FROM resource_languages WHERE resource_id = ANY($1)', [duplicateIds]);
+      await db.query('DELETE FROM resource_transportation WHERE resource_id = ANY($1)', [duplicateIds]);
+      await db.query('DELETE FROM resource_feedback WHERE resource_id = ANY($1)', [duplicateIds]);
+      
+      // Finally delete the duplicate resources
+      await db.query('DELETE FROM resources WHERE id = ANY($1)', [duplicateIds]);
     }
 
     // Commit transaction

@@ -38,29 +38,30 @@ async function findZipCodesInRadius(zipCode, radiusMiles = 10) {
   }
 }
 
-/**
- * Find healthcare providers in a given ZIP code using NPI API
- * @param {string} zipCode - ZIP code to search in
- * @param {string} specialtyType - Type of healthcare provider to search for
- * @returns {Promise<Array>} Array of healthcare providers
- */
 async function findProvidersInZipCode(zipCode, specialtyType = '') {
   try {
-    // Construct the search terms - ZIP code and optional specialty
-    let terms = zipCode;
-    if (specialtyType) {
-      terms += ` ${specialtyType}`;
+    // Construct the search terms - specialty only
+    let terms = specialtyType || '';
+    if (!terms) {
+      // If no specialty type is provided, use a generic term that will return providers
+      terms = 'provider'; // or some other general term that will match many records
     }
     
     // Construct query parameters for NPI API based on their documentation
     const queryParams = new URLSearchParams({
-      terms: terms,  // Search by ZIP code and optional specialty
+      terms: terms,  // Search by specialty only
       maxList: 100,  // Get up to 100 results
       // Define display fields
       df: 'NPI,name.full,provider_type,addr_practice.full',
       // Extra fields to return
       ef: 'NPI,name.full,provider_type,addr_practice.line1,addr_practice.city,addr_practice.state,addr_practice.zip,addr_practice.phone,licenses.taxonomy.classification'
     });
+    
+    // Add ZIP code filter using the 'q' parameter with Elasticsearch query syntax
+    if (zipCode) {
+      // Use Elasticsearch query to filter by ZIP code
+      queryParams.append('q', `addr_practice.zip:${zipCode}`);
+    }
     
     const apiUrl = `${NPI_API_BASE_URL}?${queryParams.toString()}`;
     console.log(`Fetching providers from NPI API: ${apiUrl}`);
@@ -100,8 +101,19 @@ async function findProvidersInZipCode(zipCode, specialtyType = '') {
                         extraData['licenses.taxonomy.classification'][i] : null;
         
         // Skip if the provider is not in our target ZIP code area
-        // In a real app, you might want to include nearby providers as well
         if (!providerZip || !providerZip.startsWith(zipCode.substring(0, 3))) {
+          continue;
+        }
+        
+        // Check if provider is blacklisted - MOVED INSIDE LOOP
+        const isBlacklisted = await isProviderBlacklisted({
+          npi: npi,
+          name: name,
+          address_line1: address
+        });
+        
+        if (isBlacklisted) {
+          console.log(`Skipping blacklisted provider: ${name}`);
           continue;
         }
         
@@ -132,58 +144,7 @@ async function findProvidersInZipCode(zipCode, specialtyType = '') {
       }
     }
 
-    // Enhance provider names with commonly known brands
-    const enhancedProviders = [];
-    
-    for (const provider of providers) {
-      try {
-        // First check if we already have this mapping cached
-        const cachedMapping = await db.query(
-          'SELECT display_name FROM provider_name_mappings WHERE npi = $1 OR (original_name = $2) OR (address_line1 = $3 AND zip = $4)',
-          [provider.npi, provider.name, provider.address_line1, provider.zip]
-        );
-        
-        if (cachedMapping.rows.length > 0) {
-          // Use cached name
-          provider.display_name = cachedMapping.rows[0].display_name;
-          provider.original_name = provider.name;
-          enhancedProviders.push(provider);
-          console.log(`Using cached name mapping: ${provider.name} -> ${provider.display_name}`);
-        } else {
-          // Get enhanced name
-          const enhancedProvider = await providerNameService.enhanceProviderName(provider);
-          
-          // Only cache if the name was actually enhanced
-          if (enhancedProvider.display_name !== enhancedProvider.name) {
-            // Cache the mapping for future use
-            await db.query(
-              'INSERT INTO provider_name_mappings (npi, original_name, display_name, address_line1, zip, source) VALUES ($1, $2, $3, $4, $5, $6)',
-              [
-                provider.npi, 
-                provider.name, 
-                enhancedProvider.display_name, 
-                provider.address_line1, 
-                provider.zip,
-                enhancedProvider.nameSource || 'ai'
-              ]
-            );
-            
-            console.log(`Created new name mapping: ${provider.name} -> ${enhancedProvider.display_name}`);
-          }
-          
-          enhancedProviders.push(enhancedProvider);
-        }
-      } catch (error) {
-        console.error(`Error enhancing provider name for ${provider.name}:`, error);
-        // If enhancement fails, use the original provider
-        enhancedProviders.push(provider);
-      }
-      
-      // Add a small delay to avoid overwhelming the database
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    
-    return enhancedProviders;
+    return providers;
   } catch (error) {
     console.error(`Error finding providers in ZIP code ${zipCode}:`, error);
     return [];
@@ -402,6 +363,44 @@ async function findPediatricProvidersInZipCode(zipCode) {
     return [];
   }
 }
+/**
+ * Check if a provider is blacklisted
+ * @param {Object} provider - Provider object to check
+ * @returns {Promise<boolean>} True if provider is blacklisted
+ */
+async function isProviderBlacklisted(provider) {
+  try {
+    // Check by NPI first (most reliable)
+    if (provider.npi) {
+      const npiCheck = await db.query(
+        'SELECT id FROM resource_blacklist WHERE npi = $1',
+        [provider.npi]
+      );
+      
+      if (npiCheck.rows.length > 0) {
+        return true;
+      }
+    }
+    
+    // Check by name and address
+    if (provider.name && provider.address_line1) {
+      const nameAddressCheck = await db.query(
+        'SELECT id FROM resource_blacklist WHERE name = $1 AND address_line1 = $2',
+        [provider.name, provider.address_line1]
+      );
+      
+      if (nameAddressCheck.rows.length > 0) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking blacklist:', error);
+    return false; // Default to not blacklisted on error
+  }
+}
+
 module.exports = {
   findZipCodesInRadius,
   findProvidersInZipCode,

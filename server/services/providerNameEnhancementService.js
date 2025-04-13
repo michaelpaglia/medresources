@@ -166,6 +166,62 @@ function formatProviderName(name) {
     .join(' ');
 }
 
+/**
+ * Format description text with proper capitalization
+ * @param {string} description - Description text to format
+ * @returns {string} Formatted description
+ */
+function formatDescription(description) {
+  if (!description) return '';
+  
+  // Capitalize first letter of the description
+  let formatted = description.charAt(0).toUpperCase() + description.slice(1);
+  
+  // Replace common lowercase phrases with capitalized versions
+  const termsToCapitalize = [
+    'pediatrics provider',
+    'pediatric provider',
+    'pediatrician',
+    'family practice',
+    'dental care',
+    'mental health',
+    'primary care',
+    'family medicine',
+    'internal medicine',
+    'physician',
+    'healthcare',
+    'health care',
+    'dentist',
+    'pharmacy',
+    'urgent care',
+    'clinic',
+    'center',
+    'hospital',
+    'specialty care',
+    'social services',
+    'counselor'
+  ];
+  
+  termsToCapitalize.forEach(term => {
+    const capitalizedTerm = term
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    
+    const regex = new RegExp('\\b' + term + '\\b', 'gi');
+    formatted = formatted.replace(regex, capitalizedTerm);
+  });
+  
+  // Fix periods and spacing
+  formatted = formatted.replace(/\.\s*([a-z])/g, '. $1');
+  formatted = formatted.replace(/\s+/g, ' ').trim();
+  
+  // Remove duplicate periods
+  formatted = formatted.replace(/\.+/g, '.');
+  
+  return formatted;
+}
+
 // Modify the enhanceProviderName function
 async function enhanceProviderName(provider) {
   try {
@@ -205,5 +261,6 @@ async function enhanceProviderName(provider) {
 }
 module.exports = {
   enhanceProviderName,
+  formatDescription,
   formatProviderName
 };

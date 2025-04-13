@@ -142,3 +142,40 @@
       width: 100%;
     }
   }
+
+/* Add to client/src/styles/AdminDataLoader.css */
+
+.admin-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--neutral-300);
+  margin-bottom: var(--space-lg);
+}
+
+.tab-button {
+  padding: var(--space-md) var(--space-lg);
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-700);
+  position: relative;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  color: var(--primary-color);
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: var(--primary-color);
+}
+
+.tab-button:hover:not(.active) {
+  background-color: var(--neutral-200);
+}

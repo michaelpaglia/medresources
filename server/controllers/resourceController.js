@@ -1,5 +1,7 @@
+// server/controllers/resourceController.js
 const db = require('../db/connection');
 const geocodingService = require('../services/geocodingService.js');
+const providerNameService = require('../services/providerNameEnhancementService');
 
 /**
  * Get resource by ID with modified response
@@ -27,13 +29,15 @@ async function getResourceById(req, res) {
     // Clean up the response before sending
     const resource = result.rows[0];
     
-    // Remove AI analysis reference from notes if present
+    // Format description and remove AI analysis references
     if (resource.notes) {
-      resource.notes = resource.notes
-        .replace(' (Data enriched via AI analysis)', '')
-        .replace(' (Data enriched via AI text analysis)', '')
-        .replace(' (Data enriched via fallback rules)', '')
-        .replace(' (Data enrichment failed)', '');
+      resource.notes = providerNameService.formatDescription(
+        resource.notes
+          .replace(' (Data enriched via AI analysis)', '')
+          .replace(' (Data enriched via AI text analysis)', '')
+          .replace(' (Data enriched via fallback rules)', '')
+          .replace(' (Data enrichment failed)', '')
+      );
     }
     
     res.json(resource);
@@ -57,11 +61,13 @@ async function getAllResources(req, res) {
     // Clean up all resources
     const resources = result.rows.map(resource => {
       if (resource.notes) {
-        resource.notes = resource.notes
-          .replace(' (Data enriched via AI analysis)', '')
-          .replace(' (Data enriched via AI text analysis)', '')
-          .replace(' (Data enriched via fallback rules)', '')
-          .replace(' (Data enrichment failed)', '');
+        resource.notes = providerNameService.formatDescription(
+          resource.notes
+            .replace(' (Data enriched via AI analysis)', '')
+            .replace(' (Data enriched via AI text analysis)', '')
+            .replace(' (Data enriched via fallback rules)', '')
+            .replace(' (Data enrichment failed)', '')
+        );
       }
       return resource;
     });
@@ -127,11 +133,13 @@ async function searchResources(req, res) {
     // Clean up all resources
     const resources = result.rows.map(resource => {
       if (resource.notes) {
-        resource.notes = resource.notes
-          .replace(' (Data enriched via AI analysis)', '')
-          .replace(' (Data enriched via AI text analysis)', '')
-          .replace(' (Data enriched via fallback rules)', '')
-          .replace(' (Data enrichment failed)', '');
+        resource.notes = providerNameService.formatDescription(
+          resource.notes
+            .replace(' (Data enriched via AI analysis)', '')
+            .replace(' (Data enriched via AI text analysis)', '')
+            .replace(' (Data enriched via fallback rules)', '')
+            .replace(' (Data enrichment failed)', '')
+        );
       }
       return resource;
     });
@@ -165,11 +173,13 @@ async function getResourcesByType(req, res) {
     // Clean up resources
     const resources = result.rows.map(resource => {
       if (resource.notes) {
-        resource.notes = resource.notes
-          .replace(' (Data enriched via AI analysis)', '')
-          .replace(' (Data enriched via AI text analysis)', '')
-          .replace(' (Data enriched via fallback rules)', '')
-          .replace(' (Data enrichment failed)', '');
+        resource.notes = providerNameService.formatDescription(
+          resource.notes
+            .replace(' (Data enriched via AI analysis)', '')
+            .replace(' (Data enriched via AI text analysis)', '')
+            .replace(' (Data enriched via fallback rules)', '')
+            .replace(' (Data enrichment failed)', '')
+        );
       }
       return resource;
     });
@@ -248,11 +258,13 @@ async function getResourcesByZipCode(req, res) {
     // Clean up resources
     const resources = result.rows.map(resource => {
       if (resource.notes) {
-        resource.notes = resource.notes
-          .replace(' (Data enriched via AI analysis)', '')
-          .replace(' (Data enriched via AI text analysis)', '')
-          .replace(' (Data enriched via fallback rules)', '')
-          .replace(' (Data enrichment failed)', '');
+        resource.notes = providerNameService.formatDescription(
+          resource.notes
+            .replace(' (Data enriched via AI analysis)', '')
+            .replace(' (Data enriched via AI text analysis)', '')
+            .replace(' (Data enriched via fallback rules)', '')
+            .replace(' (Data enrichment failed)', '')
+        );
       }
       delete resource.distance; // Remove distance from final output
       return resource;
@@ -300,8 +312,20 @@ async function enrichResourceLocation(req, res) {
         WHERE id = $3
         RETURNING *
       `, [coordinates.latitude, coordinates.longitude, id]);
+      
+      // Format description if needed
+      const updatedResource = updateResult.rows[0];
+      if (updatedResource.notes) {
+        updatedResource.notes = providerNameService.formatDescription(
+          updatedResource.notes
+            .replace(' (Data enriched via AI analysis)', '')
+            .replace(' (Data enriched via AI text analysis)', '')
+            .replace(' (Data enriched via fallback rules)', '')
+            .replace(' (Data enrichment failed)', '')
+        );
+      }
 
-      res.json(updateResult.rows[0]);
+      res.json(updatedResource);
     } else {
       res.status(404).json({ 
         error: 'Could not geocode resource location',
@@ -359,8 +383,6 @@ async function updateMissingCoordinates(req, res) {
   }
 }
 
-// Add this to your resourceController.js
-
 /**
  * Load resources for a location (admin endpoint)
  * @param {object} req - Express request object
@@ -407,6 +429,7 @@ async function testOpenAI(req, res) {
     res.status(500).json({ error: 'Failed to test OpenAI connection' });
   }
 }
+
 /**
  * Refresh provider display name
  * @param {object} req - Express request object
@@ -423,6 +446,17 @@ async function refreshProviderName(req, res) {
     const npiService = require('../services/npiHealthcareService');
     const updatedResource = await npiService.refreshProviderDisplayName(parseInt(id));
     
+    // Format description if needed
+    if (updatedResource.notes) {
+      updatedResource.notes = providerNameService.formatDescription(
+        updatedResource.notes
+          .replace(' (Data enriched via AI analysis)', '')
+          .replace(' (Data enriched via AI text analysis)', '')
+          .replace(' (Data enriched via fallback rules)', '')
+          .replace(' (Data enrichment failed)', '')
+      );
+    }
+    
     res.json({
       success: true,
       resource: updatedResource
@@ -435,9 +469,123 @@ async function refreshProviderName(req, res) {
     });
   }
 }
+/**
+ * Add a resource to the blacklist
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function blacklistResource(req, res) {
+  try {
+    const { npi, name, address_line1, zip, reason } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Resource name is required' });
+    }
+    
+    // Check if already exists in blacklist
+    const existingCheck = await db.query(
+      'SELECT id FROM resource_blacklist WHERE npi = $1 OR (name = $2 AND address_line1 = $3)',
+      [npi || null, name, address_line1 || null]
+    );
+    
+    if (existingCheck.rows.length > 0) {
+      return res.status(400).json({ 
+        error: 'Resource already in blacklist',
+        id: existingCheck.rows[0].id
+      });
+    }
+    
+    // Add to blacklist
+    const result = await db.query(`
+      INSERT INTO resource_blacklist 
+        (npi, name, address_line1, zip, reason, created_at, updated_at)
+      VALUES
+        ($1, $2, $3, $4, $5, NOW(), NOW())
+      RETURNING id
+    `, [npi || null, name, address_line1 || null, zip || null, reason || null]);
+    
+    // Optional: If already exists in resources table, remove it
+    if (npi || (name && address_line1)) {
+      let whereClause = '';
+      const params = [];
+      
+      if (npi) {
+        whereClause = 'npi = $1';
+        params.push(npi);
+      } else {
+        whereClause = 'name = $1 AND address_line1 = $2';
+        params.push(name, address_line1);
+      }
+      
+      // Delete the resource and its relations if it exists
+      await db.query(`
+        DELETE FROM resource_services WHERE resource_id IN (SELECT id FROM resources WHERE ${whereClause});
+        DELETE FROM resource_insurances WHERE resource_id IN (SELECT id FROM resources WHERE ${whereClause});
+        DELETE FROM resource_languages WHERE resource_id IN (SELECT id FROM resources WHERE ${whereClause});
+        DELETE FROM resource_transportation WHERE resource_id IN (SELECT id FROM resources WHERE ${whereClause});
+        DELETE FROM resource_feedback WHERE resource_id IN (SELECT id FROM resources WHERE ${whereClause});
+        DELETE FROM resources WHERE ${whereClause};
+      `, params);
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Resource added to blacklist', 
+      id: result.rows[0].id 
+    });
+  } catch (error) {
+    console.error('Error blacklisting resource:', error);
+    res.status(500).json({ error: 'Failed to blacklist resource' });
+  }
+}
 
+/**
+ * Remove a resource from the blacklist
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function removeFromBlacklist(req, res) {
+  try {
+    const { id } = req.params;
+    
+    // Delete from blacklist
+    const result = await db.query(
+      'DELETE FROM resource_blacklist WHERE id = $1 RETURNING *',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Blacklisted resource not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Resource removed from blacklist',
+      resource: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error removing from blacklist:', error);
+    res.status(500).json({ error: 'Failed to remove from blacklist' });
+  }
+}
 
-
+/**
+ * Get all blacklisted resources
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function getBlacklistedResources(req, res) {
+  try {
+    const result = await db.query(
+      'SELECT * FROM resource_blacklist ORDER BY created_at DESC'
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error getting blacklisted resources:', error);
+    res.status(500).json({ error: 'Failed to retrieve blacklisted resources' });
+  }
+}
 // Export all the functions
 module.exports = {
   getAllResources,
@@ -450,4 +598,4 @@ module.exports = {
   enrichResourceLocation,
   updateMissingCoordinates,
   refreshProviderName
-}
+};
