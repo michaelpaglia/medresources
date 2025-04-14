@@ -1,24 +1,12 @@
-// components/ResourceFilter.js
+// client/src/components/ResourceFilter.js
 import React, { useState } from 'react';
 import { FaSearch, FaChevronDown, FaChevronUp, FaFilter } from 'react-icons/fa';
+import useResourceTypes from '../hooks/useResourceTypes';
 import '../styles/ResourceFilter.css';
 
 const ResourceFilter = ({ filters, onFilterChange }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const resourceTypes = [
-    { id: '', name: 'All Resource Types' },
-    { id: '1', name: 'Health Center' },
-    { id: '2', name: 'Hospital' },
-    { id: '3', name: 'Pharmacy' },
-    { id: '4', name: 'Dental Clinic' },
-    { id: '5', name: 'Mental Health' },
-    { id: '6', name: 'Transportation' },
-    { id: '7', name: 'Social Services' },
-    { id: '8', name: 'Women\'s Health' },
-    { id: '9', name: 'Specialty Care' },
-    { id: '10', name: 'Urgent Care' }
-  ];
+  const { resourceTypes, isLoading: typesLoading } = useResourceTypes();
 
   const handleSearchChange = (e) => {
     onFilterChange({ searchTerm: e.target.value });
@@ -62,7 +50,8 @@ const ResourceFilter = ({ filters, onFilterChange }) => {
               value={filters.resourceType}
               onChange={handleTypeChange}
             >
-              {resourceTypes.map(type => (
+              <option value="">All Resource Types</option>
+              {!typesLoading && resourceTypes && resourceTypes.map(type => (
                 <option key={type.id} value={type.id}>
                   {type.name}
                 </option>

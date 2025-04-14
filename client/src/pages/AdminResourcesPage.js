@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaEdit, FaSearch, FaSync, FaTrash } from 'react-icons/fa';
+import useResourceTypes from '../hooks/useResourceTypes';
 import '../styles/AdminResourcesPage.css';
 
 const AdminResourcesPage = () => {
@@ -10,6 +11,9 @@ const AdminResourcesPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Use our custom hook to get resource types
+  const { resourceTypes, isLoading: typesLoading } = useResourceTypes();
   
   useEffect(() => {
     fetchResources();
@@ -57,7 +61,6 @@ const AdminResourcesPage = () => {
     setSearchTerm(e.target.value);
   };
   
-  // Move these functions inside the component
   const handleDeleteResource = (id, name) => {
     if (window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
       deleteResource(id);
@@ -84,6 +87,16 @@ const AdminResourcesPage = () => {
       console.error('Error deleting resource:', error);
       alert('Failed to delete resource: ' + error.message);
     }
+  };
+  
+  // Get resource type name from resource type ID
+  const getResourceTypeName = (typeId) => {
+    if (typesLoading || !resourceTypes || resourceTypes.length === 0) {
+      return 'Unknown'; // Default value if types aren't loaded yet
+    }
+    
+    const resourceType = resourceTypes.find(type => type.id === parseInt(typeId));
+    return resourceType ? resourceType.name : 'Unknown';
   };
   
   return (
@@ -181,40 +194,5 @@ const AdminResourcesPage = () => {
     </div>
   );
 };
-
-// Helper function to get resource type name
-function getResourceTypeName(typeId) {
-    const resourceTypes = {
-        1: 'Health Center',
-        2: 'Hospital',
-        3: 'Pharmacy',
-        4: 'Dental Care',
-        5: 'Mental Health',
-        6: 'Transportation',
-        7: 'Social Services',
-        8: 'Women\'s Health',
-        9: 'Specialty Care',
-        10: 'Urgent Care',
-        11: 'Chiropractic',
-        12: 'Family Medicine',
-        13: 'Pediatrics',
-        14: 'Cardiology',
-        15: 'Dermatology',
-        16: 'OB/GYN',
-        17: 'Physical Therapy',
-        18: 'Optometry',
-        19: 'Neurology',
-        20: 'Orthopedics',
-        21: 'ENT',
-        22: 'Podiatry',
-        23: 'Radiology',
-        24: 'Laboratory',
-        25: 'Outpatient Surgery',
-        26: 'Naturopathic',
-        27: 'Integrative Medicine'
-      };
-  
-  return resourceTypes[typeId] || 'Unknown';
-}
 
 export default AdminResourcesPage;

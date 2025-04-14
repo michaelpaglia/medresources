@@ -1,4 +1,4 @@
-// components/ImprovedResourceCard.js
+// src/components/ImprovedResourceCard.js
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -7,6 +7,7 @@ import {
   FaClock, 
   FaCheckCircle 
 } from 'react-icons/fa';
+import useResourceTypes from '../hooks/useResourceTypes';
 import '../styles/ImprovedResourceCard.css';
 
 const ImprovedResourceCard = ({ resource }) => {
@@ -29,52 +30,43 @@ const ImprovedResourceCard = ({ resource }) => {
     notes
   } = resource;
 
+  const { resourceTypes } = useResourceTypes();
+  
   // Use display_name if available, otherwise fallback to name
   const displayName = display_name || name;
 
-  // Resource type mapping
-  const resourceTypes = {
-    1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe' },
-    2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6' },
-    3: { name: 'Pharmacy', color: '#34A853', bgColor: '#e6f4ea' },
-    4: { name: 'Dental Care', color: '#FBBC05', bgColor: '#fef7e0' },
-    5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5' },
-    6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6' },
-    7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa' },
-    8: { name: 'Women\'s Health', color: '#EC407A', bgColor: '#fce4ec' },
-    9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7' },
-    10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7' }
+  // Get resource type name from the fetched resource types
+  const getResourceTypeName = (typeId) => {
+    if (!resourceTypes || !resourceTypes.length) return 'Medical Resource';
+    const foundType = resourceTypes.find(type => type.id === parseInt(typeId));
+    return foundType ? foundType.name : 'Medical Resource';
   };
 
-  // Get resource type style or use default
-  const resourceType = resourceTypes[resource_type_id] || 
-    { name: 'Medical Resource', color: '#757575', bgColor: '#f5f5f5' };
-
-  // Format phone number for display
-  const formatPhone = (phoneNumber) => {
-    if (!phoneNumber) return '';
+  // Get resource type color (could be enhanced with colors from the database)
+  const getResourceTypeColor = (typeId) => {
+    // This could be expanded to use colors stored in the database
+    const colorMap = {
+      1: { color: '#4285F4', bgColor: '#e8f0fe' }, // Health Center
+      2: { color: '#EA4335', bgColor: '#fce8e6' }, // Hospital
+      3: { color: '#34A853', bgColor: '#e6f4ea' }, // Pharmacy
+      4: { color: '#FBBC05', bgColor: '#fef7e0' }, // Dental Care
+      5: { color: '#9C27B0', bgColor: '#f3e5f5' }, // Mental Health
+      // Add colors for new resource types
+      11: { color: '#FF5722', bgColor: '#fbe9e7' }, // Chiropractic
+      12: { color: '#3F51B5', bgColor: '#e8eaf6' }, // Family Medicine
+      13: { color: '#009688', bgColor: '#e0f2f1' }, // Pediatrics
+      14: { color: '#F44336', bgColor: '#ffebee' }, // Cardiology
+      // ... add more as needed
+    };
     
-    // Remove non-numeric characters
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    
-    // Format as (XXX) XXX-XXXX
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-    }
-    
-    return phoneNumber;
-  };
-
-  // Truncate long text for card display
-  const truncateText = (text, maxLength) => {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    
-    return text.substring(0, maxLength) + '...';
+    return colorMap[typeId] || { color: '#757575', bgColor: '#f5f5f5' };
   };
 
   // Show original name tooltip if different from display name
   const showOriginalName = original_name && displayName !== original_name;
+  
+  // Get style for the resource type
+  const resourceTypeStyle = getResourceTypeColor(resource_type_id);
 
   return (
     <div className="resource-card">
@@ -88,11 +80,11 @@ const ImprovedResourceCard = ({ resource }) => {
         <span 
           className="resource-type-tag"
           style={{ 
-            backgroundColor: resourceType.bgColor,
-            color: resourceType.color
+            backgroundColor: resourceTypeStyle.bgColor,
+            color: resourceTypeStyle.color
           }}
         >
-          {resourceType.name}
+          {getResourceTypeName(resource_type_id)}
         </span>
       </div>
       
@@ -166,6 +158,28 @@ const ImprovedResourceCard = ({ resource }) => {
       </div>
     </div>
   );
+};
+
+// Helper functions
+const formatPhone = (phoneNumber) => {
+  if (!phoneNumber) return '';
+  
+  // Remove non-numeric characters
+  const cleaned = phoneNumber.replace(/\D/g, '');
+  
+  // Format as (XXX) XXX-XXXX
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  }
+  
+  return phoneNumber;
+};
+
+const truncateText = (text, maxLength) => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  
+  return text.substring(0, maxLength) + '...';
 };
 
 export default ImprovedResourceCard;
