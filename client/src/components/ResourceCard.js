@@ -22,18 +22,34 @@ const ResourceCard = ({ resource }) => {
     notes
   } = resource;
 
-  // Resource type mapping
   const resourceTypes = {
     1: 'Health Center',
     2: 'Hospital',
     3: 'Pharmacy',
-    4: 'Dental Clinic',
+    4: 'Dental Care',
     5: 'Mental Health',
     6: 'Transportation',
     7: 'Social Services',
     8: 'Women\'s Health',
     9: 'Specialty Care',
-    10: 'Urgent Care'
+    10: 'Urgent Care',
+    11: 'Chiropractic',
+    12: 'Family Medicine',
+    13: 'Pediatrics',
+    14: 'Cardiology',
+    15: 'Dermatology',
+    16: 'OB/GYN',
+    17: 'Physical Therapy',
+    18: 'Optometry',
+    19: 'Neurology',
+    20: 'Orthopedics',
+    21: 'ENT',
+    22: 'Podiatry',
+    23: 'Radiology',
+    24: 'Laboratory',
+    25: 'Outpatient Surgery',
+    26: 'Naturopathic',
+    27: 'Integrative Medicine'
   };
 
   return (

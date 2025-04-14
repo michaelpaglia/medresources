@@ -3,6 +3,8 @@
 const axios = require('axios');
 const db = require('../db/connection');
 const providerNameService = require('./providerNameEnhancementService');
+const providerCategoryService = require('../services/providerCategoryService');
+
 require('dotenv').config();
 
 // API keys should be stored in environment variables
@@ -116,7 +118,8 @@ async function findProvidersInZipCode(zipCode, specialtyType = '') {
           console.log(`Skipping blacklisted provider: ${name}`);
           continue;
         }
-        
+        const resourceTypeId = providerCategoryService.determineResourceType(provider);
+        provider.resource_type_id = resourceTypeId;
         providers.push({
           name: name,
           npi: npi,
@@ -226,16 +229,86 @@ function determineResourceTypeFromTaxonomy(taxonomy) {
   
   const taxonomyLower = taxonomy.toLowerCase();
   
-  if (taxonomyLower.includes('hospital')) return 2;
-  if (taxonomyLower.includes('pharmacy')) return 3;
-  if (taxonomyLower.includes('dentist') || taxonomyLower.includes('dental')) return 4;
-  if (taxonomyLower.includes('mental health') || taxonomyLower.includes('psychiatr') || taxonomyLower.includes('psycholog')) return 5;
-  if (taxonomyLower.includes('transport')) return 6;
-  if (taxonomyLower.includes('social work') || taxonomyLower.includes('community health')) return 7;
-  if (taxonomyLower.includes('women') || taxonomyLower.includes('obstetrics') || taxonomyLower.includes('gynecolog')) return 8;
+  // Check for specialized provider types - map to existing IDs where possible
+  // or use new IDs where appropriate
+  
+  // Urgent Care - check first as it's most specific
   if (taxonomyLower.includes('urgent')) return 10;
   
-  // Default to health center/primary care
+  // Women's Health (ID: 8)
+  if (taxonomyLower.includes('obstetric') || 
+      taxonomyLower.includes('gynecolog') || 
+      taxonomyLower.includes('ob/gyn') ||
+      taxonomyLower.includes('women')) return 8;
+      
+  // Mental Health (ID: 5)
+  if (taxonomyLower.includes('mental health') || 
+      taxonomyLower.includes('psychiatr') || 
+      taxonomyLower.includes('psycholog') ||
+      taxonomyLower.includes('counsel')) return 5;
+  
+  // Hospital (ID: 2)
+  if (taxonomyLower.includes('hospital')) return 2;
+  
+  // Pharmacy (ID: 3)
+  if (taxonomyLower.includes('pharmacy') || 
+      taxonomyLower.includes('drug store')) return 3;
+  
+  // Dental Care (ID: 4)
+  if (taxonomyLower.includes('dentist') || 
+      taxonomyLower.includes('dental')) return 4;
+  
+  // Transportation (ID: 6)
+  if (taxonomyLower.includes('transport') || 
+      taxonomyLower.includes('ambulance')) return 6;
+  
+  // Social Services (ID: 7) 
+  if (taxonomyLower.includes('social work') || 
+      taxonomyLower.includes('community health') ||
+      taxonomyLower.includes('social service')) return 7;
+  
+  // Specialty Care (ID: 9) - Map all specialized providers here unless you've added
+  // the new IDs to your database schema
+  if (taxonomyLower.includes('chiropract') ||
+      taxonomyLower.includes('cardio') || 
+      taxonomyLower.includes('heart') ||
+      taxonomyLower.includes('dermatol') || 
+      taxonomyLower.includes('skin') ||
+      taxonomyLower.includes('physical therapy') || 
+      taxonomyLower.includes('rehabilitation') ||
+      taxonomyLower.includes('optom') || 
+      taxonomyLower.includes('ophthalm') || 
+      taxonomyLower.includes('eye') ||
+      taxonomyLower.includes('neurol') ||
+      taxonomyLower.includes('orthoped') || 
+      taxonomyLower.includes('orthopaed') ||
+      taxonomyLower.includes('otolaryngol') || 
+      taxonomyLower.includes('ent') || 
+      taxonomyLower.includes('ear, nose') ||
+      taxonomyLower.includes('podiat') || 
+      taxonomyLower.includes('foot') ||
+      taxonomyLower.includes('radiol') || 
+      taxonomyLower.includes('imaging') ||
+      taxonomyLower.includes('laboratory') || 
+      taxonomyLower.includes('diagnostic testing') ||
+      taxonomyLower.includes('surgery center') || 
+      taxonomyLower.includes('outpatient surgery') ||
+      taxonomyLower.includes('naturopath') || 
+      taxonomyLower.includes('alternative medicine') ||
+      taxonomyLower.includes('integrative medicine') || 
+      taxonomyLower.includes('holistic') ||
+      taxonomyLower.includes('specialty')) return 9;
+  
+  // Primary Care / Family Medicine / Pediatrics - map to Health Center (ID: 1)
+  if (taxonomyLower.includes('family medicine') || 
+      taxonomyLower.includes('family practice') ||
+      taxonomyLower.includes('pediatric') || 
+      taxonomyLower.includes('children') ||
+      taxonomyLower.includes('primary care') ||
+      taxonomyLower.includes('general practice') ||
+      taxonomyLower.includes('internal medicine')) return 1;
+  
+  // Default to Health Center if no specific match
   return 1;
 }
 

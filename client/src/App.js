@@ -9,9 +9,25 @@ import ImprovedResourceDetailPage from './pages/ImprovedResourceDetailPage';
 import EligibilityScreener from './pages/EligibilityScreener';
 import AboutPage from './pages/AboutPage';
 import AdminDataLoader from './pages/AdminDataLoader';
+import AdminResourcesPage from './pages/AdminResourcesPage';
+import ResourceEditPage from './pages/ResourceEditPage';
 import './App.css';
 
 function App() {
+
+  const db = require('./db/connection');
+  const providerCategoryService = require('./services/providerCategoryService');
+
+  // Initialize resource type ID map
+  (async () => {
+    try {
+      await providerCategoryService.initializeResourceTypeIdMap(db);
+      console.log('Resource type ID map initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize resource type ID map:', error);
+    }
+  })();
+  
   return (
     <Router>
       <div className="app">
@@ -24,6 +40,8 @@ function App() {
             <Route path="/eligibility" element={<EligibilityScreener />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/admin/data-loader" element={<AdminDataLoader />} />
+            <Route path="/admin/resources" element={<AdminResourcesPage />} />
+            <Route path="/admin/resources/edit/:id" element={<ResourceEditPage />} />
           </Routes>
         </main>
         <footer className="footer">

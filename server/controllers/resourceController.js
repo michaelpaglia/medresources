@@ -586,6 +586,143 @@ async function getBlacklistedResources(req, res) {
     res.status(500).json({ error: 'Failed to retrieve blacklisted resources' });
   }
 }
+/**
+ * Update a resource by ID
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function updateResource(req, res) {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    // Validate ID is a number
+    if (isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid resource ID' });
+    }
+    
+    // Check if resource exists
+    const existingResource = await db.query(
+      'SELECT * FROM resources WHERE id = $1',
+      [id]
+    );
+    
+    if (existingResource.rows.length === 0) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+    
+    // Build the update query dynamically based on the fields provided
+    const allowedFields = [
+      'name', 'display_name', 'address_line1', 'address_line2', 
+      'city', 'state', 'zip', 'phone', 'website', 'email', 
+      'hours', 'resource_type_id', 'accepts_uninsured', 
+      'sliding_scale', 'free_care_available', 'notes', 
+      'eligibility_criteria'
+    ];
+    
+    // Create an array to hold the SET clauses and values
+    const setClauses = [];
+    const values = [];
+    let paramCounter = 1;
+    
+    // For each field in the update data, if it's an allowed field, add it to the SET clause
+    for (const [field, value] of Object.entries(updateData)) {
+      if (allowedFields.includes(field)) {
+        setClauses.push(`${field} = $${paramCounter}`);
+        values.push(value);
+        paramCounter++;
+      }
+    }
+    
+    // Add updated_at timestamp
+    setClauses.push(`updated_at = NOW()`);
+    
+    // If there are no fields to update, return the existing resource
+    if (setClauses.length === 1) { // Only the updated_at timestamp
+      return res.json(existingResource.rows[0]);
+    }
+    
+    // Add resource ID to values array
+    values.push(id);
+    
+    // Build and execute the update query
+    const updateQuery = `
+      UPDATE resources 
+      SET ${setClauses.join(', ')} 
+      WHERE id = $${paramCounter}
+      RETURNING *
+    `;
+    
+    const result = await db.query(updateQuery, values);
+    
+    // Format the response
+    const updatedResource = result.rows[0];
+    
+    // Remove AI references from notes if present
+    if (updatedResource.notes) {
+      updatedResource.notes = providerNameService.formatDescription(
+        updatedResource.notes
+          .replace(' (Data enriched via AI analysis)', '')
+          .replace(' (Data enriched via AI text analysis)', '')
+          .replace(' (Data enriched via fallback rules)', '')
+          .replace(' (Data enrichment failed)', '')
+      );
+    }
+    
+    res.json(updatedResource);
+  } catch (error) {
+    console.error('Error updating resource:', error);
+    res.status(500).json({ error: 'Failed to update resource' });
+  }
+}
+/**
+ * Delete a resource by ID
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ */
+async function deleteResource(req, res) {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID is a number
+    if (isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid resource ID' });
+    }
+    
+    // Begin a transaction to ensure all related data is deleted
+    await db.query('BEGIN');
+    
+    // Delete all relations first
+    await db.query('DELETE FROM resource_services WHERE resource_id = $1', [id]);
+    await db.query('DELETE FROM resource_insurances WHERE resource_id = $1', [id]);
+    await db.query('DELETE FROM resource_languages WHERE resource_id = $1', [id]);
+    await db.query('DELETE FROM resource_transportation WHERE resource_id = $1', [id]);
+    await db.query('DELETE FROM resource_feedback WHERE resource_id = $1', [id]);
+    
+    // Now delete the resource
+    const result = await db.query('DELETE FROM resources WHERE id = $1 RETURNING id, name', [id]);
+    
+    // Commit the transaction
+    await db.query('COMMIT');
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Resource deleted successfully',
+      resource: result.rows[0]
+    });
+  } catch (error) {
+    // Rollback in case of error
+    await db.query('ROLLBACK');
+    console.error('Error deleting resource:', error);
+    res.status(500).json({ error: 'Failed to delete resource' });
+  }
+}
+
+
 // Export all the functions
 module.exports = {
   getAllResources,
@@ -597,5 +734,10 @@ module.exports = {
   testOpenAI,
   enrichResourceLocation,
   updateMissingCoordinates,
-  refreshProviderName
+  refreshProviderName,
+  blacklistResource,
+  removeFromBlacklist,
+  getBlacklistedResources,
+  updateResource,
+  deleteResource
 };
