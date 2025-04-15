@@ -1,47 +1,101 @@
-// Improved CategoryCarousel.js
-import React, { useState, useEffect } from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+// src/components/CategoryCarousel.js
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  FaChevronLeft, 
+  FaChevronRight, 
+  FaMedkit, 
+  FaHospital, 
+  FaPills, 
+  FaTooth, 
+  FaBrain,
+  FaAmbulance, 
+  FaHandHoldingHeart, 
+  FaFemale,
+  FaHeartbeat,
+  FaUserMd,
+  FaBaby,
+  FaAllergies,
+  FaEye, // Reusing FaBrain for neurology
+  FaBone,
+  FaHeadSideMask,
+  FaShoePrints,
+  FaXRay,
+  FaFlask,
+  FaCut,
+  FaSpa,
+  FaYinYang
+} from 'react-icons/fa';
 import useResourceTypes from '../hooks/useResourceTypes';
 import '../styles/CategoryCarousel.css';
 
 const CategoryCarousel = () => {
   const [hoveredItem, setHoveredItem] = useState(null);
-  const [hoveredButton, setHoveredButton] = useState(null);
   const [categoryScroll, setCategoryScroll] = useState(0);
   const { resourceTypes, isLoading } = useResourceTypes();
   
   // Define visible categories for responsive design
-  const visibleCount = window.innerWidth < 768 ? 2 : 4;
+  const getVisibleCount = () => {
+    const width = window.innerWidth;
+    if (width < 576) return 2;
+    if (width < 768) return 3;
+    if (width < 992) return 4;
+    return 5;
+  };
+  
+  const visibleCount = getVisibleCount();
   
   // Get visible categories based on scroll position
   const visibleCategories = isLoading ? [] : 
     resourceTypes.slice(categoryScroll, categoryScroll + visibleCount);
   
-  // Map resource types to icons and colors
-  const getIconForType = (typeId) => {
-    // You can expand this mapping with more specific icons
+  // Map resource types to icon components
+  const getIconComponentForType = (typeId) => {
+    // Comprehensive icon mapping for all resource types
     const iconMap = {
-      1: { icon: "FaMedkit", color: "#4285F4", bgColor: "#e8f0fe" },
-      2: { icon: "FaHospital", color: "#EA4335", bgColor: "#fce8e6" },
-      3: { icon: "FaPills", color: "#34A853", bgColor: "#e6f4ea" },
-      4: { icon: "FaTooth", color: "#FBBC05", bgColor: "#fef7e0" },
-      5: { icon: "FaBrain", color: "#9C27B0", bgColor: "#f3e5f5" },
-      // Add more mappings for your new categories
+      1: { IconComponent: FaMedkit, color: "#4285F4", bgColor: "#e8f0fe" },      // Health Center
+      2: { IconComponent: FaHospital, color: "#EA4335", bgColor: "#fce8e6" },    // Hospital
+      3: { IconComponent: FaPills, color: "#34A853", bgColor: "#e6f4ea" },       // Pharmacy
+      4: { IconComponent: FaTooth, color: "#FBBC05", bgColor: "#fef7e0" },       // Dental Care
+      5: { IconComponent: FaBrain, color: "#9C27B0", bgColor: "#f3e5f5" },       // Mental Health
+      6: { IconComponent: FaAmbulance, color: "#3949AB", bgColor: "#e8eaf6" },   // Transportation
+      7: { IconComponent: FaHandHoldingHeart, color: "#00ACC1", bgColor: "#e0f7fa" }, // Social Services
+      8: { IconComponent: FaFemale, color: "#EC407A", bgColor: "#fce4ec" },      // Women's Health
+      9: { IconComponent: FaMedkit, color: "#757575", bgColor: "#f5f5f5" },      // Generic Clinic
+      
+      // Extended type mappings
+      33: { IconComponent: FaHeartbeat, color: "#FF5722", bgColor: "#fbe9e7" },   // Chiropractic
+      34: { IconComponent: FaUserMd, color: "#3F51B5", bgColor: "#e8eaf6" },      // Family Medicine
+      35: { IconComponent: FaBaby, color: "#009688", bgColor: "#e0f2f1" },        // Pediatrics
+      36: { IconComponent: FaHeartbeat, color: "#F44336", bgColor: "#ffebee" },   // Cardiology
+      37: { IconComponent: FaAllergies, color: "#9C27B0", bgColor: "#f3e5f5" },   // Dermatology
+      38: { IconComponent: FaFemale, color: "#EC407A", bgColor: "#fce4ec" },      // OB/GYN
+      39: { IconComponent: FaBone, color: "#009688", bgColor: "#e0f2f1" },        // Physical Therapy
+      40: { IconComponent: FaEye, color: "#03A9F4", bgColor: "#e1f5fe" },         // Optometry
+      41: { IconComponent: FaBrain, color: "#673AB7", bgColor: "#ede7f6" },       // Neurology
+      42: { IconComponent: FaBone, color: "#FF9800", bgColor: "#fff3e0" },        // Orthopedics
+      43: { IconComponent: FaHeadSideMask, color: "#00ACC1", bgColor: "#e0f7fa" }, // ENT
+      44: { IconComponent: FaShoePrints, color: "#FFC107", bgColor: "#fff8e1" },  // Podiatry
+      45: { IconComponent: FaXRay, color: "#3F51B5", bgColor: "#e8eaf6" },        // Radiology
+      46: { IconComponent: FaFlask, color: "#8BC34A", bgColor: "#f1f8e9" },       // Laboratory
+      47: { IconComponent: FaCut, color: "#CDDC39", bgColor: "#f9fbe7" },         // Outpatient Surgery
+      48: { IconComponent: FaSpa, color: "#009688", bgColor: "#e0f2f1" },         // Naturopathic
+      49: { IconComponent: FaYinYang, color: "#4CAF50", bgColor: "#e8f5e9" }      // Integrative Medicine
     };
     
-    return iconMap[typeId] || { icon: "FaMedkit", color: "#4285F4", bgColor: "#e8f0fe" };
+    return iconMap[typeId] || { IconComponent: FaMedkit, color: "#757575", bgColor: "#f5f5f5" };
   };
   
   // Handle navigation
   const handlePrevClick = () => {
     if (categoryScroll > 0) {
-      setCategoryScroll(categoryScroll - 1);
+      setCategoryScroll(Math.max(0, categoryScroll - 1));
     }
   };
   
   const handleNextClick = () => {
-    if (categoryScroll < resourceTypes.length - visibleCount) {
-      setCategoryScroll(categoryScroll + 1);
+    if (!isLoading && categoryScroll < resourceTypes.length - visibleCount) {
+      setCategoryScroll(Math.min(resourceTypes.length - visibleCount, categoryScroll + 1));
     }
   };
 
@@ -56,19 +110,18 @@ const CategoryCarousel = () => {
           className={`nav-arrow ${categoryScroll === 0 ? 'disabled' : ''}`}
           onClick={handlePrevClick}
           disabled={categoryScroll === 0}
-          onMouseEnter={() => setHoveredButton('prev')}
-          onMouseLeave={() => setHoveredButton(null)}
+          aria-label="Previous categories"
         >
           <FaChevronLeft />
         </button>
         
         <div className="categories-container">
           {visibleCategories.map((category) => {
-            const iconInfo = getIconForType(category.id);
+            const { IconComponent, color, bgColor } = getIconComponentForType(category.id);
             return (
-              <a 
+              <Link 
                 key={category.id} 
-                href={`/search?type=${category.id}`}
+                to={`/search?type=${category.id}`}
                 className="category-column"
                 onMouseEnter={() => setHoveredItem(category.id)}
                 onMouseLeave={() => setHoveredItem(null)}
@@ -76,16 +129,18 @@ const CategoryCarousel = () => {
                 <div 
                   className="quick-link-icon"
                   style={{
-                    backgroundColor: iconInfo.bgColor,
-                    transform: hoveredItem === category.id ? 'translateY(-2px)' : 'none'
+                    backgroundColor: bgColor,
+                    transform: hoveredItem === category.id ? 'translateY(-2px)' : 'none',
+                    boxShadow: hoveredItem === category.id ? 
+                      '0 2px 8px rgba(60, 64, 67, 0.3)' : 
+                      '0 1px 3px rgba(60, 64, 67, 0.3)'
                   }}
                 >
-                  {/* Use dynamic icon here */}
-                  <i className={iconInfo.icon} style={{ color: iconInfo.color }} />
+                  <IconComponent style={{ color: color, fontSize: '24px' }} />
                 </div>
                 <span>{category.name}</span>
-              </a>
-            )
+              </Link>
+            );
           })}
         </div>
         
@@ -93,8 +148,7 @@ const CategoryCarousel = () => {
           className={`nav-arrow ${categoryScroll >= resourceTypes.length - visibleCount ? 'disabled' : ''}`}
           onClick={handleNextClick}
           disabled={categoryScroll >= resourceTypes.length - visibleCount}
-          onMouseEnter={() => setHoveredButton('next')}
-          onMouseLeave={() => setHoveredButton(null)}
+          aria-label="Next categories"
         >
           <FaChevronRight />
         </button>
