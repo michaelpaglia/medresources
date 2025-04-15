@@ -5,7 +5,6 @@ import {
   FaSearch, 
   FaMapMarkedAlt, 
   FaList,
-  FaFilter,
   FaMedkit,
   FaHospital,
   FaPills,
@@ -13,7 +12,20 @@ import {
   FaBrain,
   FaAmbulance,
   FaHandHoldingHeart,
-  FaFemale
+  FaFemale,
+  FaHeartbeat,
+  FaUserMd,
+  FaBaby,
+  FaAllergies,
+  FaEye, 
+  FaBone,
+  FaHeadSideMask,
+  FaShoePrints,
+  FaXRay,
+  FaFlask,
+  FaCut,
+  FaSpa,
+  FaYinYang
 } from 'react-icons/fa';
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
 import MapView from '../components/MapView';
@@ -229,19 +241,56 @@ const ResourceSearchPage = () => {
   
   // Get appropriate icon for resource type
   const getTypeIcon = (typeId) => {
+    // Same mapping as in CategoryCarousel
     const iconMap = {
-      1: <FaMedkit />,       // Health Center
-      2: <FaHospital />,     // Hospital
-      3: <FaPills />,        // Pharmacy
-      4: <FaTooth />,        // Dental
-      5: <FaBrain />,        // Mental Health
-      6: <FaAmbulance />,    // Transportation
+      1: <FaMedkit />,           // General Health Center
+      2: <FaHospital />,         // Hospital
+      3: <FaPills />,            // Pharmacy
+      4: <FaTooth />,            // Dental
+      5: <FaBrain />,            // Mental Health
+      6: <FaAmbulance />,        // Transportation
       7: <FaHandHoldingHeart />, // Social Services
-      8: <FaFemale />        // Women's Health
+      8: <FaFemale />,           // Women's Health
+      9: <FaMedkit />,           // Generic Clinic
+      10: <FaMedkit />,          // Urgent Care
+      11: <FaHeartbeat />,       // Chiropractic
+      12: <FaUserMd />,          // Family Medicine
+      13: <FaBaby />,            // Pediatrics
+      14: <FaHeartbeat />,       // Cardiology
+      15: <FaAllergies />,       // Dermatology
+      16: <FaFemale />,          // OB/GYN
+      17: <FaBone />,            // Physical Therapy
+      18: <FaEye />,             // Optometry
+      19: <FaBrain />,           // Neurology
+      20: <FaBone />,            // Orthopedics
+      21: <FaHeadSideMask />,    // ENT
+      22: <FaShoePrints />,      // Podiatry
+      23: <FaXRay />,            // Radiology
+      24: <FaFlask />,           // Laboratory
+      25: <FaCut />,             // Outpatient Surgery
+      26: <FaSpa />,             // Naturopathic
+      27: <FaYinYang />          // Integrative Medicine
     };
     
     return iconMap[typeId] || <FaMedkit />;
   };
+  
+  // Group resource types into categories for better display
+  const groupedResourceTypes = useMemo(() => {
+    if (!resourceTypes) return [];
+    
+    const groups = {
+      'Medical Care': [1, 2, 9, 10, 12],  // General, Hospital, Clinic, Urgent Care, Family Medicine
+      'Specialized Care': [8, 11, 14, 15, 16, 19, 20, 21, 22],  // Women's Health, Chiropractic, Cardiology, etc.
+      'Supportive Services': [3, 5, 6, 7],  // Pharmacy, Mental Health, Transportation, Social Services
+      'Other Services': [4, 13, 17, 18, 23, 24, 25, 26, 27]  // Dental, Pediatrics, PT, etc.
+    };
+    
+    return Object.entries(groups).map(([groupName, typeIds]) => ({
+      name: groupName,
+      types: resourceTypes.filter(type => typeIds.includes(Number(type.id)))
+    }));
+  }, [resourceTypes]);
   
   return (
     <div className="improved-search-page">
@@ -281,29 +330,43 @@ const ResourceSearchPage = () => {
               </button>
             </form>
           ) : (
-            // start here advanced search
             <div className="advanced-search">
               <div className="filter-section">
                 <h3>Resource Categories</h3>
-                <div className="category-filter-grid">
-                  {!typesLoading && resourceTypes && resourceTypes.map(type => (
-                    <div 
-                      key={type.id} 
-                      className={`category-filter-item ${filters.resourceType === type.id.toString() ? 'active' : ''}`}
-                      onClick={() => handleFilterChange('resourceType', filters.resourceType === type.id.toString() ? '' : type.id.toString())}
-                    >
-                      <div 
-                        className="category-icon-container"
-                        style={{ 
-                          backgroundColor: getCategoryColor(type.id) 
-                        }}
-                      >
-                        {getTypeIcon(type.id)}
-                      </div>
-                      <span>{type.name}</span>
+                
+                {!typesLoading && groupedResourceTypes.map((group, groupIndex) => (
+                  <div key={`group-${groupIndex}`} className="category-group">
+                    <h4>{group.name}</h4>
+                    <div className="category-filter-grid">
+                      {group.types.map(type => (
+                        <div 
+                          key={type.id} 
+                          className={`category-filter-item ${filters.resourceType === type.id.toString() ? 'active' : ''}`}
+                          onClick={() => handleFilterChange('resourceType', filters.resourceType === type.id.toString() ? '' : type.id.toString())}
+                        >
+                          <div 
+                            className="category-icon-container"
+                            style={{ 
+                              backgroundColor: getCategoryColor(type.id) 
+                            }}
+                          >
+                            {getTypeIcon(type.id)}
+                          </div>
+                          <span>{type.name}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+                
+                {filters.resourceType && (
+                  <button 
+                    className="clear-type-filter"
+                    onClick={() => handleFilterChange('resourceType', '')}
+                  >
+                    Clear Category Filter
+                  </button>
+                )}
               </div>
               
               <div className="filter-section">
@@ -383,18 +446,16 @@ const ResourceSearchPage = () => {
         <div className="results-header">
           <div className="results-count">
             {filteredResources.length} resources found
+            {filters.resourceType && resourceTypes?.length > 0 && (
+              <span className="active-filter">
+                {" "}filtered by {resourceTypes.find(t => t.id.toString() === filters.resourceType)?.name || 'category'}
+              </span>
+            )}
           </div>
           <div className="view-toggle">
             <button 
               className={viewMode === 'list' ? 'active' : ''}
               onClick={() => setViewMode('list')}
-              aria-label="List view"
-            >
-              <FaList /> List
-            </button>
-            <button 
-              className={viewMode === 'map' ? 'active' : ''}
-              onClick={() => setViewMode('map')}
               aria-label="Map view"
             >
               <FaMapMarkedAlt /> Map
@@ -431,9 +492,11 @@ const ResourceSearchPage = () => {
     </div>
   );
 };
+
+// Get color for category background
 const getCategoryColor = (typeId) => {
   const colorMap = {
-    1: '#e8f0fe', // Health Center
+    1: '#e8f0fe', // General Health Center
     2: '#fce8e6', // Hospital
     3: '#e6f4ea', // Pharmacy
     4: '#fef7e0', // Dental
@@ -441,11 +504,11 @@ const getCategoryColor = (typeId) => {
     6: '#e8eaf6', // Transportation
     7: '#e0f7fa', // Social Services
     8: '#fce4ec', // Women's Health
-    9: '#fbe9e7', // Specialty Care
+    9: '#f5f5f5', // Generic Clinic
     10: '#fbe9e7', // Urgent Care
-    // Add more colors for the additional categories
-    11: '#e8f0fe', // Chiropractic
-    12: '#e8f0fe', // Family Medicine
+    // Add colors for the additional categories
+    11: '#fbe9e7', // Chiropractic
+    12: '#e8eaf6', // Family Medicine
     13: '#e0f2f1', // Pediatrics
     14: '#ffebee', // Cardiology
     15: '#f3e5f5', // Dermatology
@@ -465,4 +528,5 @@ const getCategoryColor = (typeId) => {
   
   return colorMap[typeId] || '#f5f5f5';
 };
+
 export default ResourceSearchPage;
