@@ -1,73 +1,68 @@
--- Migration: fix_resource_type_ids.sql
-
--- Begin transaction
 BEGIN;
 
--- Drop any existing temporary tables from previous failed migrations
+-- Step 1: Backup old type assignments
+DROP TABLE IF EXISTS resource_type_backup;
+CREATE TABLE resource_type_backup AS
+SELECT id AS resource_id, resource_type_id FROM resources;
+
+-- Step 2: Drop temp tables if they exist
 DROP TABLE IF EXISTS type_id_mapping;
 DROP TABLE IF EXISTS resource_types_new;
 
--- First create a mapping table to store old_id to new_id relationships
-CREATE TEMPORARY TABLE type_id_mapping (
+-- Step 3: Build ID mapping
+CREATE TEMP TABLE type_id_mapping (
   old_id INT,
   new_id INT,
   name VARCHAR(100)
 );
 
--- Insert current resource types with their target IDs
--- Keep IDs 1-10 as is, and remap IDs 33+ to start from 11
 INSERT INTO type_id_mapping (old_id, new_id, name)
-SELECT rt.id, 
-  CASE 
-    WHEN rt.id < 11 THEN rt.id  -- Keep IDs 1-10 as is
-    WHEN rt.id >= 33 THEN (rt.id - 33) + 11  -- Remap IDs 33+ to start from 11
-    ELSE rt.id  -- Handle any edge cases
-  END,
-  rt.name
-FROM resource_types rt
-ORDER BY rt.id;
+SELECT id,
+       ROW_NUMBER() OVER (ORDER BY id) + 10 AS new_id,
+       name
+FROM resource_types;
 
--- Output the mapping for verification
-SELECT old_id, new_id, name FROM type_id_mapping ORDER BY new_id;
-
--- Create a new resource_types table
+-- Step 4: Prepare new resource_types table
 CREATE TABLE resource_types_new (
-  id SERIAL PRIMARY KEY,
+  id INT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   description TEXT,
   icon_name VARCHAR(50)
 );
 
--- Copy data with new IDs
 INSERT INTO resource_types_new (id, name, description, icon_name)
 SELECT m.new_id, rt.name, rt.description, rt.icon_name
 FROM resource_types rt
-JOIN type_id_mapping m ON rt.id = m.old_id
-ORDER BY m.new_id;
+JOIN type_id_mapping m ON rt.id = m.old_id;
 
--- Update the resources table to use the new IDs
+-- Step 5: Drop FK constraints
+ALTER TABLE resources DROP CONSTRAINT IF EXISTS resources_resource_type_id_fkey;
+ALTER TABLE services DROP CONSTRAINT IF EXISTS services_resource_type_id_fkey;
+
+-- Step 6: Update resource references
 UPDATE resources r
 SET resource_type_id = m.new_id
 FROM type_id_mapping m
 WHERE r.resource_type_id = m.old_id;
 
--- Drop the old table and rename the new one
-ALTER TABLE resources DROP CONSTRAINT IF EXISTS resources_resource_type_id_fkey;
+UPDATE services s
+SET resource_type_id = m.new_id
+FROM type_id_mapping m
+WHERE s.resource_type_id = m.old_id;
+
+-- Step 7: Replace old resource_types table
 DROP TABLE resource_types;
 ALTER TABLE resource_types_new RENAME TO resource_types;
 
--- Add constraint to the new table
+-- Step 8: Restore constraints
 ALTER TABLE resource_types ADD CONSTRAINT resource_types_name_unique UNIQUE (name);
 
--- Reset the sequence
-SELECT setval('resource_types_id_seq', (SELECT MAX(id) FROM resource_types), true);
-
--- Recreate the foreign key constraint
 ALTER TABLE resources ADD CONSTRAINT resources_resource_type_id_fkey 
   FOREIGN KEY (resource_type_id) REFERENCES resource_types(id);
 
--- Create an index to improve performance
-CREATE INDEX idx_resource_type_name ON resource_types(name);
+ALTER TABLE services ADD CONSTRAINT services_resource_type_id_fkey 
+  FOREIGN KEY (resource_type_id) REFERENCES resource_types(id);
 
--- Commit the transaction
+CREATE INDEX IF NOT EXISTS idx_resource_type_name ON resource_types(name);
+
 COMMIT;
