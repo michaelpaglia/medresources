@@ -1,188 +1,102 @@
-import React, { useState } from 'react';
-import { FaChevronLeft, FaChevronRight, FaMedkit, FaPills, FaTooth } from 'react-icons/fa';
-import { GiBrain } from 'react-icons/gi';
-import { FaHospital } from 'react-icons/fa';
+// Improved CategoryCarousel.js
+import React, { useState, useEffect } from 'react';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import useResourceTypes from '../hooks/useResourceTypes';
+import '../styles/CategoryCarousel.css';
 
 const CategoryCarousel = () => {
-  // State for hover effects
   const [hoveredItem, setHoveredItem] = useState(null);
   const [hoveredButton, setHoveredButton] = useState(null);
-  
-  // Categories data with icons that actually exist in react-icons and Google-style colors
-  const categories = [
-    { 
-      id: 1, 
-      name: 'Health Centers', 
-      icon: <FaMedkit size={24} color="#4285F4" />, 
-      link: '/search?type=1',
-      bgColor: "#e8f0fe",
-      iconColor: "#4285F4"
-    },
-    { 
-      id: 3, 
-      name: 'Pharmacies', 
-      icon: <FaPills size={24} color="#34A853" />, 
-      link: '/search?type=3',
-      bgColor: "#e6f4ea",
-      iconColor: "#34A853"
-    },
-    { 
-      id: 4, 
-      name: 'Dental Care', 
-      icon: <FaTooth size={24} color="#FBBC05" />, 
-      link: '/search?type=4',
-      bgColor: "#fef7e0",
-      iconColor: "#FBBC05"
-    },
-    { 
-      id: 5, 
-      name: 'Mental Health', 
-      icon: <GiBrain size={24} color="#EA4335" />, 
-      link: '/search?type=5',
-      bgColor: "#fce8e6",
-      iconColor: "#EA4335"
-    },
-    { 
-      id: 2, 
-      name: 'Hospitals', 
-      icon: <FaHospital size={24} color="#4285F4" />, 
-      link: '/search?type=2',
-      bgColor: "#e8f0fe",
-      iconColor: "#4285F4"
-    }
-  ];
-  
-  // State for category carousel scroll position
   const [categoryScroll, setCategoryScroll] = useState(0);
+  const { resourceTypes, isLoading } = useResourceTypes();
   
-  // Set number of visible categories based on the visible design
-  const visibleCount = 4;
+  // Define visible categories for responsive design
+  const visibleCount = window.innerWidth < 768 ? 2 : 4;
   
-  // Visible categories based on scroll position
-  const visibleCategories = categories.slice(categoryScroll, categoryScroll + visibleCount);
+  // Get visible categories based on scroll position
+  const visibleCategories = isLoading ? [] : 
+    resourceTypes.slice(categoryScroll, categoryScroll + visibleCount);
   
-  // Handle previous scroll click
+  // Map resource types to icons and colors
+  const getIconForType = (typeId) => {
+    // You can expand this mapping with more specific icons
+    const iconMap = {
+      1: { icon: "FaMedkit", color: "#4285F4", bgColor: "#e8f0fe" },
+      2: { icon: "FaHospital", color: "#EA4335", bgColor: "#fce8e6" },
+      3: { icon: "FaPills", color: "#34A853", bgColor: "#e6f4ea" },
+      4: { icon: "FaTooth", color: "#FBBC05", bgColor: "#fef7e0" },
+      5: { icon: "FaBrain", color: "#9C27B0", bgColor: "#f3e5f5" },
+      // Add more mappings for your new categories
+    };
+    
+    return iconMap[typeId] || { icon: "FaMedkit", color: "#4285F4", bgColor: "#e8f0fe" };
+  };
+  
+  // Handle navigation
   const handlePrevClick = () => {
     if (categoryScroll > 0) {
       setCategoryScroll(categoryScroll - 1);
     }
   };
   
-  // Handle next scroll click
   const handleNextClick = () => {
-    if (categoryScroll < categories.length - visibleCount) {
+    if (categoryScroll < resourceTypes.length - visibleCount) {
       setCategoryScroll(categoryScroll + 1);
     }
   };
 
+  if (isLoading) {
+    return <div className="carousel-loading">Loading categories...</div>;
+  }
+
   return (
-    <div style={{
-        margin: '2rem auto',
-        position: 'relative',
-        width: '100%',
-        maxWidth: '900px'
-      }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="categories-container-wrapper">
+      <div className="categories-section">
         <button 
-          style={{
-            background: hoveredButton === 'prev' ? '#f1f3f4' : 'white',
-            border: '1px solid #dfe1e5',
-            borderRadius: '50%',
-            width: '36px',
-            height: '36px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: categoryScroll === 0 ? 'not-allowed' : 'pointer',
-            color: '#5f6368',
-            transition: 'all 0.2s ease',
-            zIndex: 2,
-            boxShadow: hoveredButton === 'prev' ? '0 1px 3px rgba(60, 64, 67, 0.2)' : '0 1px 2px rgba(60, 64, 67, 0.1)',
-            opacity: categoryScroll === 0 ? 0.5 : 1
-          }}
+          className={`nav-arrow ${categoryScroll === 0 ? 'disabled' : ''}`}
           onClick={handlePrevClick}
           disabled={categoryScroll === 0}
-          onMouseEnter={() => !categoryScroll === 0 && setHoveredButton('prev')}
+          onMouseEnter={() => setHoveredButton('prev')}
           onMouseLeave={() => setHoveredButton(null)}
         >
-          <FaChevronLeft size={16} />
+          <FaChevronLeft />
         </button>
         
-        <div style={{ 
-          overflow: 'hidden', 
-          padding: '0.5rem 0', 
-          margin: '0 1rem',
-          flex: 1
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-            {visibleCategories.map((category) => (
+        <div className="categories-container">
+          {visibleCategories.map((category) => {
+            const iconInfo = getIconForType(category.id);
+            return (
               <a 
                 key={category.id} 
-                href={category.link}
-                style={{
-                  flex: 1,
-                  textAlign: 'center',
-                  transition: 'all 0.2s ease',
-                  color: hoveredItem === category.id ? '#202124' : '#5f6368',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center'
-                }}
+                href={`/search?type=${category.id}`}
+                className="category-column"
                 onMouseEnter={() => setHoveredItem(category.id)}
                 onMouseLeave={() => setHoveredItem(null)}
               >
                 <div 
+                  className="quick-link-icon"
                   style={{
-                    width: '76px',
-                    height: '76px',
-                    borderRadius: '50%',
-                    marginBottom: '12px',
-                    transition: 'all 0.2s',
-                    boxShadow: hoveredItem === category.id 
-                      ? '0 2px 6px rgba(60, 64, 67, 0.3)' 
-                      : '0 1px 3px rgba(60, 64, 67, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: category.bgColor,
+                    backgroundColor: iconInfo.bgColor,
                     transform: hoveredItem === category.id ? 'translateY(-2px)' : 'none'
                   }}
                 >
-                  {React.cloneElement(category.icon, { color: category.iconColor })}
+                  {/* Use dynamic icon here */}
+                  <i className={iconInfo.icon} style={{ color: iconInfo.color }} />
                 </div>
-                <span style={{ 
-                  fontSize: '14px', 
-                  fontWeight: 400
-                }}>{category.name}</span>
+                <span>{category.name}</span>
               </a>
-            ))}
-          </div>
+            )
+          })}
         </div>
         
         <button 
-          style={{
-            background: hoveredButton === 'next' ? '#f1f3f4' : 'white',
-            border: '1px solid #dfe1e5',
-            borderRadius: '50%',
-            width: '36px',
-            height: '36px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: categoryScroll >= categories.length - visibleCount ? 'not-allowed' : 'pointer',
-            color: '#5f6368',
-            transition: 'all 0.2s ease',
-            zIndex: 2,
-            boxShadow: hoveredButton === 'next' ? '0 1px 3px rgba(60, 64, 67, 0.2)' : '0 1px 2px rgba(60, 64, 67, 0.1)',
-            opacity: categoryScroll >= categories.length - visibleCount ? 0.5 : 1
-          }}
+          className={`nav-arrow ${categoryScroll >= resourceTypes.length - visibleCount ? 'disabled' : ''}`}
           onClick={handleNextClick}
-          disabled={categoryScroll >= categories.length - visibleCount}
-          onMouseEnter={() => !(categoryScroll >= categories.length - visibleCount) && setHoveredButton('next')}
+          disabled={categoryScroll >= resourceTypes.length - visibleCount}
+          onMouseEnter={() => setHoveredButton('next')}
           onMouseLeave={() => setHoveredButton(null)}
         >
-          <FaChevronRight size={16} />
+          <FaChevronRight />
         </button>
       </div>
     </div>

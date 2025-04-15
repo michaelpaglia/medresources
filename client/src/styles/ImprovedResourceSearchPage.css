@@ -320,3 +320,119 @@
       height: 400px;
     }
   }
+
+  .category-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .category-filter-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #dadce0;
+    background-color: white;
+  }
+  
+  .category-filter-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(60, 64, 67, 0.15);
+  }
+  
+  .category-filter-item.active {
+    background-color: #e8f0fe;
+    border-color: #4285F4;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.2);
+  }
+  
+  .category-icon-container {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    color: #4285F4;
+    transition: transform 0.2s;
+  }
+  
+  .category-filter-item:hover .category-icon-container {
+    transform: scale(1.1);
+  }
+  
+  .category-filter-item span {
+    font-size: 13px;
+    text-align: center;
+    color: #5f6368;
+    font-weight: 500;
+  }
+  
+  .category-filter-item.active span {
+    color: #4285F4;
+  }
+  
+  /* Filter Sections */
+  .filter-section {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #f1f3f4;
+  }
+  
+  .filter-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  
+  .filter-section h3 {
+    color: #202124;
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+  
+  .filter-section h4 {
+    color: #5f6368;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 0;
+    margin-bottom: 12px;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .category-filter-grid {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 12px;
+    }
+    
+    .category-filter-item {
+      padding: 8px;
+    }
+    
+    .category-icon-container {
+      width: 40px;
+      height: 40px;
+    }
+    
+    .category-filter-item span {
+      font-size: 12px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .category-filter-grid {
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 8px;
+    }
+  }

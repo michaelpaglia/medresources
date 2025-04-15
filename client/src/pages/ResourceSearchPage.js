@@ -1,12 +1,23 @@
+// src/pages/ResourceSearchPage.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   FaSearch, 
   FaMapMarkedAlt, 
-  FaList
+  FaList,
+  FaFilter,
+  FaMedkit,
+  FaHospital,
+  FaPills,
+  FaTooth,
+  FaBrain,
+  FaAmbulance,
+  FaHandHoldingHeart,
+  FaFemale
 } from 'react-icons/fa';
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
 import MapView from '../components/MapView';
+import useResourceTypes from '../hooks/useResourceTypes';
 import '../styles/ImprovedResourceSearchPage.css';
 
 const ResourceSearchPage = () => {
@@ -32,39 +43,10 @@ const ResourceSearchPage = () => {
     hasFreecare: false
   });
   
-  // Resource types mapping
-  const resourceTypes = [
-    { id: '', name: 'All Resource Types' },
-    { id: '1', name: 'Health Centers' },
-    { id: '2', name: 'Hospitals' },
-    { id: '3', name: 'Pharmacies' },
-    { id: '4', name: 'Dental Care' },
-    { id: '5', name: 'Mental Health' },
-    { id: '6', name: 'Transportation' },
-    { id: '7', name: 'Social Services' },
-    { id: '8', name: 'Women\'s Health' },
-    { id: '9', name: 'Specialty Care' },
-    { id: '10', name: 'Urgent Care' },
-    { id: '11', name: 'Chiropractic' },
-    { id: '12', name: 'Family Medicine' },
-    { id: '13', name: 'Pediatrics' },
-    { id: '14', name: 'Cardiology' },
-    { id: '15', name: 'Dermatology' },
-    { id: '16', name: 'OB/GYN' },
-    { id: '17', name: 'Physical Therapy' },
-    { id: '18', name: 'Optometry' },
-    { id: '19', name: 'Neurology' },
-    { id: '20', name: 'Orthopedics' },
-    { id: '21', name: 'ENT' },
-    { id: '22', name: 'Podiatry' },
-    { id: '23', name: 'Radiology' },
-    { id: '24', name: 'Laboratory' },
-    { id: '25', name: 'Outpatient Surgery' },
-    { id: '26', name: 'Naturopathic' },
-    { id: '27', name: 'Integrative Medicine' }
-  ];
+  // Use our custom hook to get resource types
+  const { resourceTypes, isLoading: typesLoading } = useResourceTypes();
 
-  // Function to clear URL parameters while keeping the current path
+  // Clear URL parameters while keeping the current path
   const clearUrlParams = useCallback(() => {
     navigate('/search', { replace: true });
   }, [navigate]);
@@ -97,9 +79,6 @@ const ResourceSearchPage = () => {
       url += '/search?' + params.join('&');
     }
     
-    // For debugging - log the URL being fetched
-    console.log('Fetching resources from:', url);
-    
     fetch(url)
       .then(response => {
         if (!response.ok) throw new Error('Failed to fetch resources');
@@ -111,9 +90,6 @@ const ResourceSearchPage = () => {
         setResources(cleanedData);
         setFilteredResources(cleanedData);
         setIsLoading(false);
-        
-        // REMOVE THIS LINE to keep URL parameters visible
-        // clearUrlParams();
       })
       .catch(error => {
         console.error('Error fetching resources:', error);
@@ -126,16 +102,12 @@ const ResourceSearchPage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     
-    // Add a console log to verify the function is being called
-    console.log('Search submitted with term:', searchTerm);
-    
     // Fix the fetch URL construction to ensure proper parameters
     const queryParams = new URLSearchParams();
     if (searchTerm.trim()) queryParams.append('query', searchTerm.trim());
     if (filters.resourceType) queryParams.append('resourceType', filters.resourceType);
     
     const url = `/api/resources/search?${queryParams.toString()}`;
-    console.log('Fetching from URL:', url);
     
     setIsLoading(true);
     fetch(url)
@@ -154,7 +126,7 @@ const ResourceSearchPage = () => {
         setError('Failed to load resources. Please try again later.');
         setIsLoading(false);
       });
-  }
+  };
 
   // Handle location-based search
   const handleLocationSearch = (e) => {
@@ -255,6 +227,22 @@ const ResourceSearchPage = () => {
     applyFilters();
   }, [filters, resources, applyFilters]);
   
+  // Get appropriate icon for resource type
+  const getTypeIcon = (typeId) => {
+    const iconMap = {
+      1: <FaMedkit />,       // Health Center
+      2: <FaHospital />,     // Hospital
+      3: <FaPills />,        // Pharmacy
+      4: <FaTooth />,        // Dental
+      5: <FaBrain />,        // Mental Health
+      6: <FaAmbulance />,    // Transportation
+      7: <FaHandHoldingHeart />, // Social Services
+      8: <FaFemale />        // Women's Health
+    };
+    
+    return iconMap[typeId] || <FaMedkit />;
+  };
+  
   return (
     <div className="improved-search-page">
       <h1>Find Medical Resources in Troy, NY</h1>
@@ -293,84 +281,97 @@ const ResourceSearchPage = () => {
               </button>
             </form>
           ) : (
+            // start here advanced search
             <div className="advanced-search">
-              <div className="filter-grid">
-                <div className="filter-column">
-                  <label htmlFor="resourceType">Type of Resource</label>
-                  <select
-                    id="resourceType"
-                    value={filters.resourceType}
-                    onChange={(e) => handleFilterChange('resourceType', e.target.value)}
-                  >
-                    {resourceTypes.map(type => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="filter-column">
-                  <h3>Provider Features</h3>
-                  <div className="checkbox-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={filters.acceptsUninsured}
-                        onChange={(e) => handleFilterChange('acceptsUninsured', e.target.checked)}
-                      />
-                      Accepts Uninsured
-                    </label>
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={filters.hasSlidingScale}
-                        onChange={(e) => handleFilterChange('hasSlidingScale', e.target.checked)}
-                      />
-                      Sliding Scale Fees
-                    </label>
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={filters.hasFreecare}
-                        onChange={(e) => handleFilterChange('hasFreecare', e.target.checked)}
-                      />
-                      Free Care Available
-                    </label>
-                  </div>
-                </div>
-                
-                <div className="filter-column">
-                  <form onSubmit={handleLocationSearch} className="zip-search">
-                    <div className="zip-input-group">
-                      <label htmlFor="zipCode">Find by ZIP Code</label>
-                      <input
-                        type="text"
-                        id="zipCode"
-                        value={zipCode}
-                        onChange={(e) => setZipCode(e.target.value)}
-                        placeholder="e.g., 12180"
-                        pattern="[0-9]{5}"
-                        maxLength="5"
-                      />
-                    </div>
-                    <div className="radius-group">
-                      <label htmlFor="radius">Radius</label>
-                      <select
-                        id="radius"
-                        value={radius}
-                        onChange={(e) => setRadius(e.target.value)}
+              <div className="filter-section">
+                <h3>Resource Categories</h3>
+                <div className="category-filter-grid">
+                  {!typesLoading && resourceTypes && resourceTypes.map(type => (
+                    <div 
+                      key={type.id} 
+                      className={`category-filter-item ${filters.resourceType === type.id.toString() ? 'active' : ''}`}
+                      onClick={() => handleFilterChange('resourceType', filters.resourceType === type.id.toString() ? '' : type.id.toString())}
+                    >
+                      <div 
+                        className="category-icon-container"
+                        style={{ 
+                          backgroundColor: getCategoryColor(type.id) 
+                        }}
                       >
-                        <option value="5">5 miles</option>
-                        <option value="10">10 miles</option>
-                        <option value="15">15 miles</option>
-                        <option value="25">25 miles</option>
-                      </select>
+                        {getTypeIcon(type.id)}
+                      </div>
+                      <span>{type.name}</span>
                     </div>
-                    <button type="submit" className="location-button">
-                      Find Resources
-                    </button>
-                  </form>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="filter-section">
+                <h3>Additional Filters</h3>
+                <div className="filter-grid">
+                  <div className="filter-column">
+                    <h4>Provider Features</h4>
+                    <div className="checkbox-group">
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={filters.acceptsUninsured}
+                          onChange={(e) => handleFilterChange('acceptsUninsured', e.target.checked)}
+                        />
+                        Accepts Uninsured
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={filters.hasSlidingScale}
+                          onChange={(e) => handleFilterChange('hasSlidingScale', e.target.checked)}
+                        />
+                        Sliding Scale Fees
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={filters.hasFreecare}
+                          onChange={(e) => handleFilterChange('hasFreecare', e.target.checked)}
+                        />
+                        Free Care Available
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="filter-column">
+                    <form onSubmit={handleLocationSearch} className="zip-search">
+                      <h4>Location Search</h4>
+                      <div className="zip-input-group">
+                        <label htmlFor="zipCode">Find by ZIP Code</label>
+                        <input
+                          type="text"
+                          id="zipCode"
+                          value={zipCode}
+                          onChange={(e) => setZipCode(e.target.value)}
+                          placeholder="e.g., 12180"
+                          pattern="[0-9]{5}"
+                          maxLength="5"
+                        />
+                      </div>
+                      <div className="radius-group">
+                        <label htmlFor="radius">Radius</label>
+                        <select
+                          id="radius"
+                          value={radius}
+                          onChange={(e) => setRadius(e.target.value)}
+                        >
+                          <option value="5">5 miles</option>
+                          <option value="10">10 miles</option>
+                          <option value="15">15 miles</option>
+                          <option value="25">25 miles</option>
+                        </select>
+                      </div>
+                      <button type="submit" className="location-button">
+                        Find Resources
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
@@ -430,5 +431,38 @@ const ResourceSearchPage = () => {
     </div>
   );
 };
-
+const getCategoryColor = (typeId) => {
+  const colorMap = {
+    1: '#e8f0fe', // Health Center
+    2: '#fce8e6', // Hospital
+    3: '#e6f4ea', // Pharmacy
+    4: '#fef7e0', // Dental
+    5: '#f3e5f5', // Mental Health
+    6: '#e8eaf6', // Transportation
+    7: '#e0f7fa', // Social Services
+    8: '#fce4ec', // Women's Health
+    9: '#fbe9e7', // Specialty Care
+    10: '#fbe9e7', // Urgent Care
+    // Add more colors for the additional categories
+    11: '#e8f0fe', // Chiropractic
+    12: '#e8f0fe', // Family Medicine
+    13: '#e0f2f1', // Pediatrics
+    14: '#ffebee', // Cardiology
+    15: '#f3e5f5', // Dermatology
+    16: '#fce4ec', // OB/GYN
+    17: '#e0f2f1', // Physical Therapy
+    18: '#e1f5fe', // Optometry
+    19: '#ede7f6', // Neurology
+    20: '#fff3e0', // Orthopedics
+    21: '#e0f7fa', // ENT
+    22: '#fff8e1', // Podiatry
+    23: '#e8eaf6', // Radiology
+    24: '#f1f8e9', // Laboratory
+    25: '#f9fbe7', // Outpatient Surgery
+    26: '#e0f2f1', // Naturopathic
+    27: '#e8f5e9'  // Integrative Medicine
+  };
+  
+  return colorMap[typeId] || '#f5f5f5';
+};
 export default ResourceSearchPage;
