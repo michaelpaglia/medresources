@@ -1,25 +1,22 @@
 -- Migration: 004_expand_resource_types.sql
 
--- First, check for duplicates
-SELECT name, COUNT(*) 
-FROM resource_types 
-GROUP BY name 
-HAVING COUNT(*) > 1;
-
--- Create a temporary table to store the IDs we want to keep
-CREATE TEMP TABLE resource_types_to_keep AS
-SELECT MIN(id) as id, name
-FROM resource_types
-GROUP BY name;
-
--- Delete all duplicates while keeping one copy of each
+-- Remove duplicate resource types
+WITH duplicates AS (
+  SELECT name, ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) as row_num
+  FROM resource_types
+)
 DELETE FROM resource_types
-WHERE id NOT IN (SELECT id FROM resource_types_to_keep);
+WHERE id IN (
+  SELECT id 
+  FROM resource_types r
+  JOIN duplicates d ON r.name = d.name
+  WHERE d.row_num > 1
+);
 
--- Now add the constraint
-ALTER TABLE resource_types ADD CONSTRAINT resource_types_name_key UNIQUE (name);
+-- Ensure a unique constraint on name
+ALTER TABLE resource_types ADD CONSTRAINT resource_types_name_unique UNIQUE (name);
 
--- Add new, more specific resource types
+-- Add new, more specific resource types with checks
 INSERT INTO resource_types (name, description, icon_name)
 VALUES
   ('Chiropractic', 'Chiropractic care providers', 'chiropractic-icon'),
@@ -41,8 +38,10 @@ VALUES
   ('Integrative Medicine', 'Combined conventional and alternative practices', 'integrative-icon')
 ON CONFLICT (name) DO NOTHING;
 
--- Drop the temporary table
-DROP TABLE resource_types_to_keep;
+-- Rename any existing generic resource types to be more descriptive
+UPDATE resource_types 
+SET name = 'Generic Health Center', description = 'General healthcare services'
+WHERE name = 'Health Center';
 
 -- Make sure all resource types have proper sequence values
 SELECT setval('resource_types_id_seq', (SELECT MAX(id) FROM resource_types), true);

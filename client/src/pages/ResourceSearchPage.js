@@ -40,9 +40,28 @@ const ResourceSearchPage = () => {
     { id: '3', name: 'Pharmacies' },
     { id: '4', name: 'Dental Care' },
     { id: '5', name: 'Mental Health' },
-    { id: '8', name: 'Women\'s Health' },
     { id: '6', name: 'Transportation' },
-    { id: '10', name: 'Urgent Care' }
+    { id: '7', name: 'Social Services' },
+    { id: '8', name: 'Women\'s Health' },
+    { id: '9', name: 'Specialty Care' },
+    { id: '10', name: 'Urgent Care' },
+    { id: '11', name: 'Chiropractic' },
+    { id: '12', name: 'Family Medicine' },
+    { id: '13', name: 'Pediatrics' },
+    { id: '14', name: 'Cardiology' },
+    { id: '15', name: 'Dermatology' },
+    { id: '16', name: 'OB/GYN' },
+    { id: '17', name: 'Physical Therapy' },
+    { id: '18', name: 'Optometry' },
+    { id: '19', name: 'Neurology' },
+    { id: '20', name: 'Orthopedics' },
+    { id: '21', name: 'ENT' },
+    { id: '22', name: 'Podiatry' },
+    { id: '23', name: 'Radiology' },
+    { id: '24', name: 'Laboratory' },
+    { id: '25', name: 'Outpatient Surgery' },
+    { id: '26', name: 'Naturopathic' },
+    { id: '27', name: 'Integrative Medicine' }
   ];
 
   // Function to clear URL parameters while keeping the current path
