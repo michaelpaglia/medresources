@@ -53,34 +53,35 @@ const CategoryCarousel = () => {
   const getIconComponentForType = (typeId) => {
     // Comprehensive icon mapping for all resource types
     const iconMap = {
-      1: { IconComponent: FaMedkit, color: "#4285F4", bgColor: "#e8f0fe" },      // Health Center
-      2: { IconComponent: FaHospital, color: "#EA4335", bgColor: "#fce8e6" },    // Hospital
-      3: { IconComponent: FaPills, color: "#34A853", bgColor: "#e6f4ea" },       // Pharmacy
-      4: { IconComponent: FaTooth, color: "#FBBC05", bgColor: "#fef7e0" },       // Dental Care
-      5: { IconComponent: FaBrain, color: "#9C27B0", bgColor: "#f3e5f5" },       // Mental Health
-      6: { IconComponent: FaAmbulance, color: "#3949AB", bgColor: "#e8eaf6" },   // Transportation
-      7: { IconComponent: FaHandHoldingHeart, color: "#00ACC1", bgColor: "#e0f7fa" }, // Social Services
-      8: { IconComponent: FaFemale, color: "#EC407A", bgColor: "#fce4ec" },      // Women's Health
-      9: { IconComponent: FaMedkit, color: "#757575", bgColor: "#f5f5f5" },      // Generic Clinic
+      11: { IconComponent: FaMedkit, color: "#4285F4", bgColor: "#e8f0fe" },     // Health Center
+      12: { IconComponent: FaHospital, color: "#EA4335", bgColor: "#fce8e6" },   // Hospital
+      13: { IconComponent: FaPills, color: "#34A853", bgColor: "#e6f4ea" },      // Pharmacy
+      14: { IconComponent: FaTooth, color: "#FBBC05", bgColor: "#fef7e0" },      // Dental Care
+      15: { IconComponent: FaBrain, color: "#9C27B0", bgColor: "#f3e5f5" },      // Mental Health
+      16: { IconComponent: FaAmbulance, color: "#3949AB", bgColor: "#e8eaf6" },  // Transportation
+      17: { IconComponent: FaHandHoldingHeart, color: "#00ACC1", bgColor: "#e0f7fa" }, // Social Services
+      18: { IconComponent: FaFemale, color: "#EC407A", bgColor: "#fce4ec" },     // Women's Health
+      19: { IconComponent: FaMedkit, color: "#757575", bgColor: "#f5f5f5" },     // Generic Clinic
+      20: { IconComponent: FaMedkit, color: "#FF5722", bgColor: "#fbe9e7" },     // Urgent Care
       
-      // Extended type mappings
-      33: { IconComponent: FaHeartbeat, color: "#FF5722", bgColor: "#fbe9e7" },   // Chiropractic
-      34: { IconComponent: FaUserMd, color: "#3F51B5", bgColor: "#e8eaf6" },      // Family Medicine
-      35: { IconComponent: FaBaby, color: "#009688", bgColor: "#e0f2f1" },        // Pediatrics
-      36: { IconComponent: FaHeartbeat, color: "#F44336", bgColor: "#ffebee" },   // Cardiology
-      37: { IconComponent: FaAllergies, color: "#9C27B0", bgColor: "#f3e5f5" },   // Dermatology
-      38: { IconComponent: FaFemale, color: "#EC407A", bgColor: "#fce4ec" },      // OB/GYN
-      39: { IconComponent: FaBone, color: "#009688", bgColor: "#e0f2f1" },        // Physical Therapy
-      40: { IconComponent: FaEye, color: "#03A9F4", bgColor: "#e1f5fe" },         // Optometry
-      41: { IconComponent: FaBrain, color: "#673AB7", bgColor: "#ede7f6" },       // Neurology
-      42: { IconComponent: FaBone, color: "#FF9800", bgColor: "#fff3e0" },        // Orthopedics
-      43: { IconComponent: FaHeadSideMask, color: "#00ACC1", bgColor: "#e0f7fa" }, // ENT
-      44: { IconComponent: FaShoePrints, color: "#FFC107", bgColor: "#fff8e1" },  // Podiatry
-      45: { IconComponent: FaXRay, color: "#3F51B5", bgColor: "#e8eaf6" },        // Radiology
-      46: { IconComponent: FaFlask, color: "#8BC34A", bgColor: "#f1f8e9" },       // Laboratory
-      47: { IconComponent: FaCut, color: "#CDDC39", bgColor: "#f9fbe7" },         // Outpatient Surgery
-      48: { IconComponent: FaSpa, color: "#009688", bgColor: "#e0f2f1" },         // Naturopathic
-      49: { IconComponent: FaYinYang, color: "#4CAF50", bgColor: "#e8f5e9" }      // Integrative Medicine
+      // New expanded types
+      21: { IconComponent: FaHeartbeat, color: "#FF5722", bgColor: "#fbe9e7" },  // Chiropractic
+      22: { IconComponent: FaUserMd, color: "#3F51B5", bgColor: "#e8eaf6" },     // Family Medicine
+      23: { IconComponent: FaBaby, color: "#009688", bgColor: "#e0f2f1" },       // Pediatrics
+      24: { IconComponent: FaHeartbeat, color: "#F44336", bgColor: "#ffebee" },  // Cardiology
+      25: { IconComponent: FaAllergies, color: "#9C27B0", bgColor: "#f3e5f5" },  // Dermatology
+      26: { IconComponent: FaFemale, color: "#EC407A", bgColor: "#fce4ec" },     // OB/GYN
+      27: { IconComponent: FaBone, color: "#009688", bgColor: "#e0f2f1" },       // Physical Therapy
+      28: { IconComponent: FaEye, color: "#03A9F4", bgColor: "#e1f5fe" },        // Optometry
+      29: { IconComponent: FaBrain, color: "#673AB7", bgColor: "#ede7f6" },      // Neurology
+      30: { IconComponent: FaBone, color: "#FF9800", bgColor: "#fff3e0" },       // Orthopedics
+      31: { IconComponent: FaHeadSideMask, color: "#00ACC1", bgColor: "#e0f7fa" }, // ENT
+      32: { IconComponent: FaShoePrints, color: "#FFC107", bgColor: "#fff8e1" }, // Podiatry
+      33: { IconComponent: FaXRay, color: "#3F51B5", bgColor: "#e8eaf6" },       // Radiology
+      34: { IconComponent: FaFlask, color: "#8BC34A", bgColor: "#f1f8e9" },      // Laboratory
+      35: { IconComponent: FaCut, color: "#CDDC39", bgColor: "#f9fbe7" },        // Outpatient Surgery
+      36: { IconComponent: FaSpa, color: "#009688", bgColor: "#e0f2f1" },        // Naturopathic
+      37: { IconComponent: FaYinYang, color: "#4CAF50", bgColor: "#e8f5e9" }     // Integrative Medicine
     };
     
     return iconMap[typeId] || { IconComponent: FaMedkit, color: "#757575", bgColor: "#f5f5f5" };

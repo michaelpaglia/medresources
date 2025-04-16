@@ -58,9 +58,21 @@ const ResourceSearchPage = () => {
   // Use our custom hook to get resource types
   const { resourceTypes, isLoading: typesLoading } = useResourceTypes();
 
-  // Clear URL parameters while keeping the current path
+  // Get URL parameters (only declare this once)
+  const initialFetchParams = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    return {
+      queryParam: searchParams.get('query') || '',
+      typeParam: searchParams.get('type') || ''
+    };
+  }, [location.search]);
+
   const clearUrlParams = useCallback(() => {
-    navigate('/search', { replace: true });
+    // Replace the current URL with just the path, no query parameters
+    navigate('/search', { 
+      replace: true,
+      state: { clearFilters: true } // Add a state flag to indicate filters should be cleared
+    });
   }, [navigate]);
 
   // Clean up AI mentions from resource data
@@ -109,6 +121,42 @@ const ResourceSearchPage = () => {
         setIsLoading(false);
       });
   }, [cleanResourceData]);
+  
+  // Update the useEffect that watches for URL changes to handle filter clearing
+  useEffect(() => {
+    const { queryParam, typeParam } = initialFetchParams;
+    const locationState = location.state || {};
+    
+    // Check if we're clearing filters
+    if (locationState.clearFilters) {
+      // Reset all filters
+      setFilters({
+        resourceType: '',
+        acceptsUninsured: false,
+        hasSlidingScale: false,
+        hasFreecare: false
+      });
+      setSearchTerm('');
+      
+      // Fetch all resources with no filters
+      fetchResources();
+      
+      // Clear the state to prevent repeated resets
+      window.history.replaceState({}, document.title, location.pathname);
+    } else if (queryParam || typeParam) {
+      setSearchTerm(queryParam);
+      setFilters(prev => ({
+        ...prev,
+        resourceType: typeParam
+      }));
+      
+      // Fetch resources with the parameters
+      fetchResources(queryParam, typeParam);
+    } else {
+      // If no parameters, fetch all resources
+      fetchResources();
+    }
+  }, [initialFetchParams, fetchResources, location]);
 
   // Handle text search
   const handleSearchSubmit = (e) => {
@@ -204,35 +252,6 @@ const ResourceSearchPage = () => {
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
   };
-
-  // Memoize the initial fetch logic to prevent unnecessary re-renders
-  const initialFetchParams = useMemo(() => {
-    const searchParams = new URLSearchParams(location.search);
-    return {
-      queryParam: searchParams.get('query') || '',
-      typeParam: searchParams.get('type') || ''
-    };
-  }, [location.search]);
-
-  // Initial data fetch effect
-  useEffect(() => {
-    const { queryParam, typeParam } = initialFetchParams;
-    
-    // Set initial search term and type filter if params exist
-    if (queryParam || typeParam) {
-      setSearchTerm(queryParam);
-      setFilters(prev => ({
-        ...prev,
-        resourceType: typeParam
-      }));
-      
-      // Fetch resources with the parameters
-      fetchResources(queryParam, typeParam);
-    } else {
-      // If no parameters, fetch all resources
-      fetchResources();
-    }
-  }, [initialFetchParams, fetchResources]);
 
   // Filters effect
   useEffect(() => {
@@ -493,37 +512,37 @@ const ResourceSearchPage = () => {
   );
 };
 
-// Get color for category background
+// Get color for category background - updated with new IDs
 const getCategoryColor = (typeId) => {
   const colorMap = {
-    1: '#e8f0fe', // General Health Center
-    2: '#fce8e6', // Hospital
-    3: '#e6f4ea', // Pharmacy
-    4: '#fef7e0', // Dental
-    5: '#f3e5f5', // Mental Health
-    6: '#e8eaf6', // Transportation
-    7: '#e0f7fa', // Social Services
-    8: '#fce4ec', // Women's Health
-    9: '#f5f5f5', // Generic Clinic
-    10: '#fbe9e7', // Urgent Care
+    11: '#e8f0fe', // Health Center
+    12: '#fce8e6', // Hospital
+    13: '#e6f4ea', // Pharmacy
+    14: '#fef7e0', // Dental
+    15: '#f3e5f5', // Mental Health
+    16: '#e8eaf6', // Transportation
+    17: '#e0f7fa', // Social Services
+    18: '#fce4ec', // Women's Health
+    19: '#f5f5f5', // Generic Clinic
+    20: '#fbe9e7', // Urgent Care
     // Add colors for the additional categories
-    11: '#fbe9e7', // Chiropractic
-    12: '#e8eaf6', // Family Medicine
-    13: '#e0f2f1', // Pediatrics
-    14: '#ffebee', // Cardiology
-    15: '#f3e5f5', // Dermatology
-    16: '#fce4ec', // OB/GYN
-    17: '#e0f2f1', // Physical Therapy
-    18: '#e1f5fe', // Optometry
-    19: '#ede7f6', // Neurology
-    20: '#fff3e0', // Orthopedics
-    21: '#e0f7fa', // ENT
-    22: '#fff8e1', // Podiatry
-    23: '#e8eaf6', // Radiology
-    24: '#f1f8e9', // Laboratory
-    25: '#f9fbe7', // Outpatient Surgery
-    26: '#e0f2f1', // Naturopathic
-    27: '#e8f5e9'  // Integrative Medicine
+    21: '#fbe9e7', // Chiropractic
+    22: '#e8eaf6', // Family Medicine
+    23: '#e0f2f1', // Pediatrics
+    24: '#ffebee', // Cardiology
+    25: '#f3e5f5', // Dermatology
+    26: '#fce4ec', // OB/GYN
+    27: '#e0f2f1', // Physical Therapy
+    28: '#e1f5fe', // Optometry
+    29: '#ede7f6', // Neurology
+    30: '#fff3e0', // Orthopedics
+    31: '#e0f7fa', // ENT
+    32: '#fff8e1', // Podiatry
+    33: '#e8eaf6', // Radiology
+    34: '#f1f8e9', // Laboratory
+    35: '#f9fbe7', // Outpatient Surgery
+    36: '#e0f2f1', // Naturopathic
+    37: '#e8f5e9'  // Integrative Medicine
   };
   
   return colorMap[typeId] || '#f5f5f5';
