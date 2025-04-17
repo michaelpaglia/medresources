@@ -137,3 +137,60 @@
     height: 32px;
   }
 }
+/* Update category carousel colors */
+.quick-link-icon {
+  background-color: white; /* Keep the background white */
+  border: 2px solid var(--logo-blue); /* Add a navy border */
+}
+
+/* For the category-specific colors */
+.quick-link-icon.health-centers {
+  background-color: white;
+  border-color: var(--logo-blue);
+}
+
+.quick-link-icon.health-centers svg {
+  color: var(--logo-blue);
+}
+
+.quick-link-icon.pharmacies {
+  background-color: white;
+  border-color: var(--logo-red);
+}
+
+.quick-link-icon.pharmacies svg {
+  color: var(--logo-red);
+}
+
+/* Hover effects */
+.quick-link:hover .quick-link-icon {
+  background-color: var(--logo-light);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.3);
+}
+
+.categories-container-wrapper {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 10px 0;
+  width: 100%;
+}
+
+.categories-section {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.categories-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}

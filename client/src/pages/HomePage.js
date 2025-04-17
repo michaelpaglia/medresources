@@ -8,13 +8,29 @@ import '../styles/HomePage.css';
 
 const HomePage = () => {
   return (
-    <div className="home-page google-style">
-      <section className="google-hero">
-        <EnhancedSearchBar />
-        <CategoryCarousel />
-      </section>
+    <div className="home-page">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* Logo with minimal margin */}
+        <div className="logo-section" style={{ marginBottom: '5px' }}>
+          <img 
+            src="/images/518cares-logo.png" 
+            alt="518 Cares Logo" 
+            className="main-logo"
+          />
+        </div>
+        
+        {/* Search bar with no top margin */}
+        <div style={{ marginTop: '0', width: '100%', maxWidth: '640px' }}>
+          <EnhancedSearchBar />
+        </div>
+        
+        {/* Category carousel */}
+        <div style={{ width: '100%' }}>
+          <CategoryCarousel />
+        </div>
+      </div>
 
-      {/* Added back the features section */}
+      {/* Features section */}
       <section className="features">
         <div className="feature-container">
           <div className="feature-card">
@@ -23,7 +39,7 @@ const HomePage = () => {
             </div>
             <h3 className="feature-title">Browse All Resources</h3>
             <p className="feature-description">
-              View all medical resources available in the Troy area.
+              View all medical resources available in the Troy/Albany area.
             </p>
             <Link to="/search" className="feature-link">
               View All Resources
@@ -58,7 +74,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Quick Help Section */}
+      {/* Quick Help Section
       <section className="quick-help">
         <div className="quick-help-content">
           <h2 className="section-title">Need Help Quickly?</h2>
@@ -83,7 +99,7 @@ const HomePage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
     </div>
   );
 };

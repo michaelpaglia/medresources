@@ -27,6 +27,7 @@ import {
   FaSpa,
   FaYinYang
 } from 'react-icons/fa';
+import getCategoryIcon from '../utils/categoryIcons';
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
 import MapView from '../components/MapView';
 import useResourceTypes from '../hooks/useResourceTypes';
@@ -259,39 +260,9 @@ const ResourceSearchPage = () => {
   }, [filters, resources, applyFilters]);
   
   // Get appropriate icon for resource type
-  const getTypeIcon = (typeId) => {
-    // Same mapping as in CategoryCarousel
-    const iconMap = {
-      1: <FaMedkit />,           // General Health Center
-      2: <FaHospital />,         // Hospital
-      3: <FaPills />,            // Pharmacy
-      4: <FaTooth />,            // Dental
-      5: <FaBrain />,            // Mental Health
-      6: <FaAmbulance />,        // Transportation
-      7: <FaHandHoldingHeart />, // Social Services
-      8: <FaFemale />,           // Women's Health
-      9: <FaMedkit />,           // Generic Clinic
-      10: <FaMedkit />,          // Urgent Care
-      11: <FaHeartbeat />,       // Chiropractic
-      12: <FaUserMd />,          // Family Medicine
-      13: <FaBaby />,            // Pediatrics
-      14: <FaHeartbeat />,       // Cardiology
-      15: <FaAllergies />,       // Dermatology
-      16: <FaFemale />,          // OB/GYN
-      17: <FaBone />,            // Physical Therapy
-      18: <FaEye />,             // Optometry
-      19: <FaBrain />,           // Neurology
-      20: <FaBone />,            // Orthopedics
-      21: <FaHeadSideMask />,    // ENT
-      22: <FaShoePrints />,      // Podiatry
-      23: <FaXRay />,            // Radiology
-      24: <FaFlask />,           // Laboratory
-      25: <FaCut />,             // Outpatient Surgery
-      26: <FaSpa />,             // Naturopathic
-      27: <FaYinYang />          // Integrative Medicine
-    };
-    
-    return iconMap[typeId] || <FaMedkit />;
+  const getTypeIcon = (typeName) => {
+    const { Icon } = getCategoryIcon(typeName);
+    return <Icon />;
   };
   
   // Group resource types into categories for better display
@@ -357,7 +328,9 @@ const ResourceSearchPage = () => {
                   <div key={`group-${groupIndex}`} className="category-group">
                     <h4>{group.name}</h4>
                     <div className="category-filter-grid">
-                      {group.types.map(type => (
+                    {group.types.map(type => {
+                      const { Icon, color, bgColor } = getCategoryIcon(type.name);
+                      return (
                         <div 
                           key={type.id} 
                           className={`category-filter-item ${filters.resourceType === type.id.toString() ? 'active' : ''}`}
@@ -366,14 +339,15 @@ const ResourceSearchPage = () => {
                           <div 
                             className="category-icon-container"
                             style={{ 
-                              backgroundColor: getCategoryColor(type.id) 
+                              backgroundColor: bgColor
                             }}
                           >
-                            {getTypeIcon(type.id)}
+                            <Icon style={{ color: color }} />
                           </div>
                           <span>{type.name}</span>
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   </div>
                 ))}
@@ -546,6 +520,35 @@ const getCategoryColor = (typeId) => {
   };
   
   return colorMap[typeId] || '#f5f5f5';
+};
+
+// Add this helper function to get icon and style for a category
+const getCategoryIconAndInfo = (typeId, typeName) => {
+  // Map resource type names to icon info
+  const categoryIconMap = {
+    'Hospital': { Icon: FaHospital, color: '#EA4335', bgColor: '#fce8e6' },
+    'Clinic': { Icon: FaMedkit, color: '#4285F4', bgColor: '#e8f0fe' },
+    'General Clinic': { Icon: FaMedkit, color: '#4285F4', bgColor: '#e8f0fe' },
+    'Cardiology': { Icon: FaHeartbeat, color: '#F44336', bgColor: '#ffebee' },
+    'Chiropractic': { Icon: FaBone, color: '#FF5722', bgColor: '#fbe9e7' },
+    'Dermatology': { Icon: FaAllergies, color: '#9C27B0', bgColor: '#f3e5f5' },
+    'ENT': { Icon: FaHeadSideMask, color: '#00ACC1', bgColor: '#e0f7fa' },
+    'Family Medicine': { Icon: FaUserMd, color: '#3F51B5', bgColor: '#e8eaf6' },
+    'Mental Health': { Icon: FaBrain, color: '#9C27B0', bgColor: '#f3e5f5' },
+    'OB/GYN': { Icon: FaFemale, color: '#EC407A', bgColor: '#fce4ec' },
+    'Pediatrics': { Icon: FaBaby, color: '#009688', bgColor: '#e0f2f1' },
+    'Pharmacy': { Icon: FaPills, color: '#34A853', bgColor: '#e6f4ea' },
+    'Social Services': { Icon: FaHandHoldingHeart, color: '#00ACC1', bgColor: '#e0f7fa' },
+    'Transportation': { Icon: FaAmbulance, color: '#3949AB', bgColor: '#e8eaf6' },
+    'Dental Care': { Icon: FaTooth, color: '#FBBC05', bgColor: '#fef7e0' },
+    'Optometry': { Icon: FaEye, color: '#03A9F4', bgColor: '#e1f5fe' }
+  };
+  
+  return categoryIconMap[typeName] || { 
+    Icon: FaMedkit, 
+    color: '#757575', 
+    bgColor: '#f5f5f5' 
+  };
 };
 
 export default ResourceSearchPage;

@@ -426,3 +426,91 @@
     width: 100%;
   }
 }
+
+.logo-section {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  margin: 0 auto;
+  max-width: 500px;
+}
+
+.main-logo {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Additional responsive adjustments */
+@media (max-width: 768px) {
+  .logo-section {
+    padding: 15px 0;
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-section {
+    padding: 10px 0;
+    max-width: 250px;
+  }
+}
+/* Add to styles/HomePage.css */
+:root {
+  /* Updated color variables based on logo */
+  --logo-blue: #1a365d;    /* The dark navy blue in "518 Cares" */
+  --logo-red: #ff4757;     /* The red in the heart */
+  --logo-background: #f8f9fa; /* Light background to match the logo's clean look */
+  
+  /* Use these variables to override the existing Google-inspired colors */
+  --primary-color: var(--logo-blue);
+  --primary-light: #e2e8f0;
+  --primary-dark: #0f2942;
+  
+  --secondary-color: var(--logo-red);
+  --secondary-light: #ffe8eb;
+  --secondary-dark: #d63031;
+}
+
+/* Logo section with SIGNIFICANTLY reduced spacing */
+.logo-section {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 0 0; 
+  margin: 0 auto 5px auto; /* Added very small bottom margin */
+  max-width: 350px;
+}
+
+/* Targeting the search container specifically */
+.google-search-container,
+.enhanced-search-container {
+  margin-top: 0; /* Remove any default top margin */
+  padding-top: 0; /* Remove any default top padding */
+}
+
+/* Target the form directly */
+.google-hero form {
+  margin-top: 0;
+}
+
+.search-button,
+button[type="submit"].search-button,
+.google-hero .search-button {
+  background-color: #1a365d !important; /* Navy blue with !important to override other styles */
+  color: white !important;
+}
+
+.search-button:hover,
+button[type="submit"].search-button:hover,
+.google-hero .search-button:hover {
+  background-color: #0f2942 !important; /* Darker navy on hover */
+}
+
+/* Remove any padding from hero section */
+.google-hero {
+  padding-top: 0;
+}
+
+/* Add more spacing adjustments as needed */
+.categories-container-wrapper {
+  margin-top: 10px;
+}
