@@ -1,31 +1,10 @@
 // src/pages/ResourceSearchPage.js
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   FaSearch, 
   FaMapMarkedAlt, 
-  FaList,
-  FaMedkit,
-  FaHospital,
-  FaPills,
-  FaTooth,
-  FaBrain,
-  FaAmbulance,
-  FaHandHoldingHeart,
-  FaFemale,
-  FaHeartbeat,
-  FaUserMd,
-  FaBaby,
-  FaAllergies,
-  FaEye, 
-  FaBone,
-  FaHeadSideMask,
-  FaShoePrints,
-  FaXRay,
-  FaFlask,
-  FaCut,
-  FaSpa,
-  FaYinYang
+  FaList
 } from 'react-icons/fa';
 import getCategoryIcon from '../utils/categoryIcons';
 import ImprovedResourceCard from '../components/ImprovedResourceCard';
@@ -42,6 +21,7 @@ const ResourceSearchPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('keyword');
+  const previousQuery = useRef('');
   
   // Search states
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,7 +39,7 @@ const ResourceSearchPage = () => {
   // Use our custom hook to get resource types
   const { resourceTypes, isLoading: typesLoading } = useResourceTypes();
 
-  // Get URL parameters (only declare this once)
+  // Get URL parameters
   const initialFetchParams = useMemo(() => {
     const searchParams = new URLSearchParams(location.search);
     return {
@@ -68,11 +48,11 @@ const ResourceSearchPage = () => {
     };
   }, [location.search]);
 
+  // Function to clear URL parameters
   const clearUrlParams = useCallback(() => {
-    // Replace the current URL with just the path, no query parameters
     navigate('/search', { 
       replace: true,
-      state: { clearFilters: true } // Add a state flag to indicate filters should be cleared
+      state: { clearFilters: true }
     });
   }, [navigate]);
 
@@ -98,7 +78,7 @@ const ResourceSearchPage = () => {
     const params = [];
     
     if (query) params.push(`query=${encodeURIComponent(query)}`);
-    if (type) params.push(`resourceType=${encodeURIComponent(type)}`);
+    if (type) params.push(`type=${encodeURIComponent(type)}`);
     
     if (params.length > 0) {
       url += '/search?' + params.join('&');
@@ -123,7 +103,7 @@ const ResourceSearchPage = () => {
       });
   }, [cleanResourceData]);
   
-  // Update the useEffect that watches for URL changes to handle filter clearing
+  // Update when URL changes or on initial load
   useEffect(() => {
     const { queryParam, typeParam } = initialFetchParams;
     const locationState = location.state || {};
@@ -145,11 +125,21 @@ const ResourceSearchPage = () => {
       // Clear the state to prevent repeated resets
       window.history.replaceState({}, document.title, location.pathname);
     } else if (queryParam || typeParam) {
-      setSearchTerm(queryParam);
-      setFilters(prev => ({
-        ...prev,
-        resourceType: typeParam
-      }));
+      // Update search term and resource type filter from URL
+      if (queryParam) {
+        setSearchTerm(queryParam);
+        // Only update previousQuery if it's different
+        if (previousQuery.current !== queryParam) {
+          previousQuery.current = queryParam;
+        }
+      }
+      
+      if (typeParam) {
+        setFilters(prev => ({
+          ...prev,
+          resourceType: typeParam
+        }));
+      }
       
       // Fetch resources with the parameters
       fetchResources(queryParam, typeParam);
@@ -163,30 +153,15 @@ const ResourceSearchPage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     
-    // Fix the fetch URL construction to ensure proper parameters
+    // Update URL with search parameters
     const queryParams = new URLSearchParams();
     if (searchTerm.trim()) queryParams.append('query', searchTerm.trim());
-    if (filters.resourceType) queryParams.append('resourceType', filters.resourceType);
+    if (filters.resourceType) queryParams.append('type', filters.resourceType);
     
-    const url = `/api/resources/search?${queryParams.toString()}`;
+    navigate(`/search?${queryParams.toString()}`);
     
-    setIsLoading(true);
-    fetch(url)
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to fetch resources');
-        return response.json();
-      })
-      .then(data => {
-        const cleanedData = cleanResourceData(data);
-        setResources(cleanedData);
-        setFilteredResources(cleanedData);
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching resources:', error);
-        setError('Failed to load resources. Please try again later.');
-        setIsLoading(false);
-      });
+    // Fetch resources with the parameters
+    fetchResources(searchTerm.trim(), filters.resourceType);
   };
 
   // Handle location-based search
@@ -251,19 +226,38 @@ const ResourceSearchPage = () => {
 
   // Handle filter changes
   const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
+    setFilters(prev => {
+      const newFilters = { ...prev, [field]: value };
+      
+      // Update URL if resource type changes
+      if (field === 'resourceType') {
+        const queryParams = new URLSearchParams(location.search);
+        if (value) {
+          queryParams.set('type', value);
+        } else {
+          queryParams.delete('type');
+        }
+        
+        // Only navigate if the params actually changed
+        const newSearch = queryParams.toString();
+        if (newSearch !== location.search.replace(/^\?/, '')) {
+          navigate(`/search${newSearch ? `?${newSearch}` : ''}`, { replace: true });
+        }
+      }
+      
+      return newFilters;
+    });
+  };
+
+  // Update view mode
+  const toggleViewMode = (mode) => {
+    setViewMode(mode);
   };
 
   // Filters effect
   useEffect(() => {
     applyFilters();
   }, [filters, resources, applyFilters]);
-  
-  // Get appropriate icon for resource type
-  const getTypeIcon = (typeName) => {
-    const { Icon } = getCategoryIcon(typeName);
-    return <Icon />;
-  };
   
   // Group resource types into categories for better display
   const groupedResourceTypes = useMemo(() => {
@@ -439,6 +433,7 @@ const ResourceSearchPage = () => {
         <div className="results-header">
           <div className="results-count">
             {filteredResources.length} resources found
+            {searchTerm && <span> matching "{searchTerm}"</span>}
             {filters.resourceType && resourceTypes?.length > 0 && (
               <span className="active-filter">
                 {" "}filtered by {resourceTypes.find(t => t.id.toString() === filters.resourceType)?.name || 'category'}
@@ -448,7 +443,14 @@ const ResourceSearchPage = () => {
           <div className="view-toggle">
             <button 
               className={viewMode === 'list' ? 'active' : ''}
-              onClick={() => setViewMode('list')}
+              onClick={() => toggleViewMode('list')}
+              aria-label="List view"
+            >
+              <FaList /> List
+            </button>
+            <button 
+              className={viewMode === 'map' ? 'active' : ''}
+              onClick={() => toggleViewMode('map')}
               aria-label="Map view"
             >
               <FaMapMarkedAlt /> Map
@@ -484,71 +486,6 @@ const ResourceSearchPage = () => {
       </div>
     </div>
   );
-};
-
-// Get color for category background - updated with new IDs
-const getCategoryColor = (typeId) => {
-  const colorMap = {
-    11: '#e8f0fe', // Health Center
-    12: '#fce8e6', // Hospital
-    13: '#e6f4ea', // Pharmacy
-    14: '#fef7e0', // Dental
-    15: '#f3e5f5', // Mental Health
-    16: '#e8eaf6', // Transportation
-    17: '#e0f7fa', // Social Services
-    18: '#fce4ec', // Women's Health
-    19: '#f5f5f5', // Generic Clinic
-    20: '#fbe9e7', // Urgent Care
-    // Add colors for the additional categories
-    21: '#fbe9e7', // Chiropractic
-    22: '#e8eaf6', // Family Medicine
-    23: '#e0f2f1', // Pediatrics
-    24: '#ffebee', // Cardiology
-    25: '#f3e5f5', // Dermatology
-    26: '#fce4ec', // OB/GYN
-    27: '#e0f2f1', // Physical Therapy
-    28: '#e1f5fe', // Optometry
-    29: '#ede7f6', // Neurology
-    30: '#fff3e0', // Orthopedics
-    31: '#e0f7fa', // ENT
-    32: '#fff8e1', // Podiatry
-    33: '#e8eaf6', // Radiology
-    34: '#f1f8e9', // Laboratory
-    35: '#f9fbe7', // Outpatient Surgery
-    36: '#e0f2f1', // Naturopathic
-    37: '#e8f5e9'  // Integrative Medicine
-  };
-  
-  return colorMap[typeId] || '#f5f5f5';
-};
-
-// Add this helper function to get icon and style for a category
-const getCategoryIconAndInfo = (typeId, typeName) => {
-  // Map resource type names to icon info
-  const categoryIconMap = {
-    'Hospital': { Icon: FaHospital, color: '#EA4335', bgColor: '#fce8e6' },
-    'Clinic': { Icon: FaMedkit, color: '#4285F4', bgColor: '#e8f0fe' },
-    'General Clinic': { Icon: FaMedkit, color: '#4285F4', bgColor: '#e8f0fe' },
-    'Cardiology': { Icon: FaHeartbeat, color: '#F44336', bgColor: '#ffebee' },
-    'Chiropractic': { Icon: FaBone, color: '#FF5722', bgColor: '#fbe9e7' },
-    'Dermatology': { Icon: FaAllergies, color: '#9C27B0', bgColor: '#f3e5f5' },
-    'ENT': { Icon: FaHeadSideMask, color: '#00ACC1', bgColor: '#e0f7fa' },
-    'Family Medicine': { Icon: FaUserMd, color: '#3F51B5', bgColor: '#e8eaf6' },
-    'Mental Health': { Icon: FaBrain, color: '#9C27B0', bgColor: '#f3e5f5' },
-    'OB/GYN': { Icon: FaFemale, color: '#EC407A', bgColor: '#fce4ec' },
-    'Pediatrics': { Icon: FaBaby, color: '#009688', bgColor: '#e0f2f1' },
-    'Pharmacy': { Icon: FaPills, color: '#34A853', bgColor: '#e6f4ea' },
-    'Social Services': { Icon: FaHandHoldingHeart, color: '#00ACC1', bgColor: '#e0f7fa' },
-    'Transportation': { Icon: FaAmbulance, color: '#3949AB', bgColor: '#e8eaf6' },
-    'Dental Care': { Icon: FaTooth, color: '#FBBC05', bgColor: '#fef7e0' },
-    'Optometry': { Icon: FaEye, color: '#03A9F4', bgColor: '#e1f5fe' }
-  };
-  
-  return categoryIconMap[typeName] || { 
-    Icon: FaMedkit, 
-    color: '#757575', 
-    bgColor: '#f5f5f5' 
-  };
 };
 
 export default ResourceSearchPage;

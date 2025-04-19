@@ -1,10 +1,12 @@
+// client/src/components/MapView.js
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaExclamationTriangle, FaBus } from 'react-icons/fa';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../styles/MapView.css';
+import useResourceTypes from '../hooks/useResourceTypes';
 
 // Fix Leaflet default icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -61,33 +63,9 @@ const MapBoundsUpdater = ({ resources, transitRoutes = [] }) => {
 const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) => {
   const defaultCenter = [42.7284, -73.6918]; // Troy, NY
   const defaultZoom = 12;
-
-  // Resource type mapping with colors
-  const resourceTypes = {
-    1: { name: 'Health Center', color: '#4285F4', bgColor: '#e8f0fe' },
-    2: { name: 'Hospital', color: '#EA4335', bgColor: '#fce8e6' },
-    3: { name: 'Pharmacy', color: '#34A853', bgColor: '#e6f4ea' },
-    4: { name: 'Dental Care', color: '#FBBC05', bgColor: '#fef7e0' },
-    5: { name: 'Mental Health', color: '#9C27B0', bgColor: '#f3e5f5' },
-    6: { name: 'Transportation', color: '#3949AB', bgColor: '#e8eaf6' },
-    7: { name: 'Social Services', color: '#00ACC1', bgColor: '#e0f7fa' },
-    8: { name: "Women's Health", color: '#EC407A', bgColor: '#fce4ec' },
-    9: { name: 'Specialty Care', color: '#FF7043', bgColor: '#fbe9e7' },
-    10: { name: 'Urgent Care', color: '#FF5722', bgColor: '#fbe9e7' }
-  };
-
-  // Create custom icons for different resource types
-  const createResourceIcon = (resourceTypeId) => {
-    const resourceType = getResourceType(resourceTypeId);
-    return new L.Icon({
-      iconUrl: `https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${getColorCode(resourceType.color)}.png`,
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-  };
+  
+  // Use the hook to get resource types dynamically
+  const { resourceTypes: fetchedResourceTypes, isLoading: typesLoading } = useResourceTypes();
 
   // Helper to convert hex colors to marker color codes
   const getColorCode = (hexColor) => {
@@ -118,21 +96,55 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
 
   // Get resource type information
   const getResourceType = (typeId) => {
-    return resourceTypes[typeId] || { name: 'Resource', color: '#757575', bgColor: '#f5f5f5' };
+    if (typesLoading || !fetchedResourceTypes) {
+      return { name: 'Resource', color: '#757575', bgColor: '#f5f5f5' };
+    }
+    
+    const resourceType = fetchedResourceTypes.find(type => type.id === parseInt(typeId));
+    if (!resourceType) {
+      return { name: 'Resource', color: '#757575', bgColor: '#f5f5f5' };
+    }
+    
+    // Map name to color scheme - this could be enhanced with colors stored in the database
+    const colorSchemes = {
+      'Health Center': { color: '#4285F4', bgColor: '#e8f0fe' },
+      'Hospital': { color: '#EA4335', bgColor: '#fce8e6' },
+      'Pharmacy': { color: '#34A853', bgColor: '#e6f4ea' },
+      'Dental Care': { color: '#FBBC05', bgColor: '#fef7e0' },
+      'Mental Health': { color: '#9C27B0', bgColor: '#f3e5f5' },
+      'Transportation': { color: '#3949AB', bgColor: '#e8eaf6' },
+      'Social Services': { color: '#00ACC1', bgColor: '#e0f7fa' },
+      "Women's Health": { color: '#EC407A', bgColor: '#fce4ec' },
+      'Specialty Care': { color: '#FF7043', bgColor: '#fbe9e7' },
+      'Urgent Care': { color: '#FF5722', bgColor: '#fbe9e7' }
+    };
+    
+    return colorSchemes[resourceType.name] || { name: resourceType.name, color: '#757575', bgColor: '#f5f5f5' };
+  };
+
+  // Create custom icons for different resource types
+  const createResourceIcon = (resourceTypeId) => {
+    const resourceType = getResourceType(resourceTypeId);
+    return new L.Icon({
+      iconUrl: `https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${getColorCode(resourceType.color)}.png`,
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
   };
 
   // Route colors for transit lines
-  const routeColors = {
-    default: '#1a73e8',
-    '1': '#EA4335',
-    '2': '#34A853',
-    '3': '#FBBC05',
-    '4': '#4285F4',
-    '5': '#9C27B0'
-  };
-
-  // Get color for transit routes
   const getRouteColor = (routeId) => {
+    const routeColors = {
+      default: '#1a73e8',
+      '1': '#EA4335',
+      '2': '#34A853',
+      '3': '#FBBC05',
+      '4': '#4285F4',
+      '5': '#9C27B0'
+    };
     const routeNumber = routeId?.split('-')?.[0];
     return routeColors[routeNumber] || routeColors.default;
   };
@@ -189,58 +201,6 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
 
         <MapBoundsUpdater resources={validResources} transitRoutes={transitRoutes} />
 
-        {/* Transit routes and stops */}
-        {transitRoutes.map((route, index) => (
-          <React.Fragment key={`route-${index}`}>
-            {/* The route line */}
-            <Polyline
-              positions={route.path}
-              color={getRouteColor(route.routeId)}
-              weight={4}
-              opacity={0.7}
-            >
-              <Popup>
-                <div>
-                  <h3><FaBus style={{ marginRight: '5px' }} /> {route.name}</h3>
-                  <p>Route {route.routeId}</p>
-                </div>
-              </Popup>
-            </Polyline>
-            
-            {/* Start stop marker */}
-            {route.startLat && route.startLon && (
-              <Marker
-                position={[parseFloat(route.startLat), parseFloat(route.startLon)]}
-                icon={transitStopIcon}
-              >
-                <Popup>
-                  <div>
-                    <h3>Bus Stop: {route.startStopName || 'Start'}</h3>
-                    <p>Route: {route.name}</p>
-                    <p>Walk to this stop: {route.walkToStartStop || '?'} miles</p>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-            
-            {/* End stop marker */}
-            {route.endLat && route.endLon && (
-              <Marker
-                position={[parseFloat(route.endLat), parseFloat(route.endLon)]}
-                icon={transitStopIcon}
-              >
-                <Popup>
-                  <div>
-                    <h3>Bus Stop: {route.endStopName || 'End'}</h3>
-                    <p>Route: {route.name}</p>
-                    <p>Walk from this stop: {route.walkFromEndStop || '?'} miles</p>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-          </React.Fragment>
-        ))}
-
         {/* Resource markers */}
         {validResources.map((resource) => (
           <Marker
@@ -251,9 +211,11 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
             <Popup className="resource-popup">
               <div className="popup-content">
                 <h3>{resource.name}</h3>
-                <div className="resource-type">
-                  {getResourceType(resource.resource_type_id).name}
-                </div>
+                {!typesLoading && fetchedResourceTypes && (
+                  <div className="resource-type">
+                    {getResourceType(resource.resource_type_id).name}
+                  </div>
+                )}
 
                 <div className="popup-address">
                   <FaMapMarkerAlt />
@@ -282,37 +244,22 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
       <div className="map-legend">
         <h4>Resource Types</h4>
         <div className="legend-items">
-          {Object.keys(resourceTypes)
-            .filter(typeId => validResources.some(r => r.resource_type_id == typeId))
-            .map(typeId => (
-              <div key={typeId} className="legend-item">
-                <span 
-                  className="legend-marker" 
-                  style={{ backgroundColor: resourceTypes[typeId].color }}
-                ></span>
-                <span className="legend-label">{resourceTypes[typeId].name}</span>
-              </div>
-            ))}
+          {!typesLoading && fetchedResourceTypes && fetchedResourceTypes
+            .filter(type => validResources.some(r => r.resource_type_id.toString() === type.id.toString()))
+            .map(type => {
+              const typeStyle = getResourceType(type.id);
+              return (
+                <div key={type.id} className="legend-item">
+                  <span 
+                    className="legend-marker" 
+                    style={{ backgroundColor: typeStyle.color }}
+                  ></span>
+                  <span className="legend-label">{type.name}</span>
+                </div>
+              );
+            })}
         </div>
       </div>
-
-      {/* Transit Legend */}
-      {showTransitLegend && transitRoutes.length > 0 && (
-        <div className="transit-legend">
-          <h4>Transit Routes</h4>
-          <ul className="legend-items">
-            {transitRoutes.map((route, index) => (
-              <li key={`legend-${index}`}>
-                <span 
-                  className="legend-color" 
-                  style={{ backgroundColor: getRouteColor(route.routeId) }}
-                ></span>
-                <span className="legend-label">{route.name || `Route ${route.routeId}`}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {resources.length > validResources.length && (
         <div className="missing-locations-notice">
