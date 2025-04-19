@@ -76,7 +76,7 @@ async function findTransitRoutes(req, res) {
         startLocation.longitude,
         parseFloat(resourceLat),
         parseFloat(resourceLon),
-        1.25 // Smaller radius for much faster results
+        0.5 // Smaller radius for much faster results
       );
     });
     
@@ -143,43 +143,95 @@ async function findTransitRoutesByCoords(req, res) {
       parseFloat(startLon),
       parseFloat(endLat),
       parseFloat(endLon),
-      1.25
+      0.5
     );
 
     console.log(`Found ${transitOptions.length} transit options`);
 
     // Process each transit option to add realistic routes
     const enhancedTransitOptions = await Promise.all(transitOptions.map(async option => {
-      // Get realistic route path
-      const routePath = await getRouteGeometry(
-        option.startStop.stop_lat, 
-        option.startStop.stop_lon,
-        option.endStop.stop_lat,
-        option.endStop.stop_lon
-      );
-      
-      return {
-        routeName: option.route.route_long_name || option.route.route_short_name,
-        routeId: option.route.route_id,
-        routeUrl: option.route.route_url,
-        startStopName: option.startStop.stop_name,
-        endStopName: option.endStop.stop_name,
-        walkToStartStop: option.startDistance.toFixed(2),
-        walkFromEndStop: option.endDistance.toFixed(2),
-        startStopLat: option.startStop.stop_lat,
-        startStopLon: option.startStop.stop_lon,
-        endStopLat: option.endStop.stop_lat,
-        endStopLon: option.endStop.stop_lon,
-        // Add the realistic route path
-        path: routePath,
-        // Add estimated time based on distance
-        estimatedTime: Math.round((option.startDistance + option.endDistance) * 15) // rough estimate
-      };
-    }));
-
+      try {
+        // Get realistic route path
+        const routePath = await getRouteGeometry(
+          parseFloat(option.startStop.stop_lat), 
+          parseFloat(option.startStop.stop_lon),
+          parseFloat(option.endStop.stop_lat),
+          parseFloat(option.endStop.stop_lon)
+        );
+        
+        // Check if this is a direct route or a transfer route
+        if (option.isTransfer) {
+          // Handle transfer routes (which have a different structure)
+          return {
+            routeName: option.routeName, // Already formatted as "Route A → Route B"
+            routeId: `${option.firstLeg}-${option.secondLeg}`, // Combine route IDs
+            routeUrl: null, // Transfer routes may not have a direct URL
+            startStopName: option.startStop.stop_name || 'Unknown stop',
+            endStopName: option.endStop.stop_name || 'Unknown stop',
+            transferStopName: option.transferStop.stop_name || 'Transfer point',
+            walkToStartStop: option.startDistance ? option.startDistance.toFixed(2) : '0.00',
+            walkFromEndStop: option.endDistance ? option.endDistance.toFixed(2) : '0.00',
+            startStopLat: option.startStop.stop_lat,
+            startStopLon: option.startStop.stop_lon,
+            endStopLat: option.endStop.stop_lat,
+            endStopLon: option.endStop.stop_lon,
+            transferStopLat: option.transferStop.stop_lat,
+            transferStopLon: option.transferStop.stop_lon,
+            path: routePath,
+            isTransfer: true,
+            // Add extra time for transfer
+            estimatedTime: Math.round((option.startDistance + option.endDistance) * 15 + 15)
+          };
+        } else {
+          // Handle direct routes
+          // Make sure route object exists and has necessary properties
+          const routeName = option.route ? 
+            (option.route.route_long_name || option.route.route_short_name || 
+            option.routeName || `Route ${option.route.route_id || 'Unknown'}`) :
+            (option.routeName || 'Unknown Route');
+          
+          const routeId = option.route ? option.route.route_id : 'unknown';
+          const routeUrl = option.route ? option.route.route_url : null;
+          
+          return {
+            routeName: routeName,
+            routeId: routeId,
+            routeUrl: routeUrl,
+            startStopName: option.startStop.stop_name || 'Unknown stop',
+            endStopName: option.endStop.stop_name || 'Unknown stop',
+            walkToStartStop: option.startDistance ? option.startDistance.toFixed(2) : '0.00',
+            walkFromEndStop: option.endDistance ? option.endDistance.toFixed(2) : '0.00',
+            startStopLat: option.startStop.stop_lat,
+            startStopLon: option.startStop.stop_lon,
+            endStopLat: option.endStop.stop_lat,
+            endStopLon: option.endStop.stop_lon,
+            path: routePath,
+            isTransfer: false,
+            estimatedTime: Math.round((option.startDistance + option.endDistance) * 15)
+          };
+        }
+      } catch (error) {
+        console.error('Error processing transit route:', error);
+        // Return a minimal valid object if there's an error
+        return {
+          routeName: 'Route processing error',
+          routeId: 'error',
+          startStopName: 'Unknown',
+          endStopName: 'Unknown',
+          walkToStartStop: '0.00',
+          walkFromEndStop: '0.00',
+          estimatedTime: 0,
+          error: error.message
+        };
+      }
+    })).catch(error => {
+      console.error('Error in transit route processing:', error);
+      return []; // Return empty array if the overall process fails
+    });
+    
     res.json(enhancedTransitOptions);
-  } catch (err) {
-    console.error('Error in findTransitRoutesByCoords:', err);
+  } catch (error) {
+    console.error('Error in findTransitRoutesByCoords:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 }

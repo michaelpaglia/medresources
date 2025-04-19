@@ -29,6 +29,8 @@ class GTFSService {
       
       // Build spatial index
       this.buildSpatialIndex();
+
+      this.logInterCityRoutes();
     } catch (error) {
       console.error('Error loading GTFS data:', error);
       this.stops = [];
@@ -162,7 +164,7 @@ class GTFSService {
   }
 
   // Find nearest stops to a given location - spatially indexed version
-  findNearestStops(latitude, longitude, maxDistance = 0.3) {
+  findNearestStops(latitude, longitude, maxDistance = 1.5) {
     // Check cache first
     const cacheKey = `${latitude.toFixed(5)},${longitude.toFixed(5)},${maxDistance}`;
     if (this.nearbyStopsCache.has(cacheKey)) {
@@ -281,8 +283,8 @@ class GTFSService {
     }
   }
 
-  // Find routes between two locations - highly optimized
-  findTransitRoutes(startLat, startLon, endLat, endLon, maxDistance = 0.3) {
+  // Find routes between two locations - with support for both direct routes and transfers
+  findTransitRoutes(startLat, startLon, endLat, endLon, maxDistance = 1.5) {
     try {
       console.log('Finding transit routes between', 
         { startLat, startLon }, 
@@ -301,7 +303,7 @@ class GTFSService {
         return [];
       }
 
-      // Find routes that connect these stops
+      // Find direct routes that connect these stops
       const transitOptions = [];
       
       // Get all route IDs for each stop
@@ -350,7 +352,9 @@ class GTFSService {
                 startStop: startStopRoute.stop,
                 endStop: endStopInfo.stop,
                 startDistance: startStopRoute.distance,
-                endDistance: endStopInfo.distance
+                endDistance: endStopInfo.distance,
+                isTransfer: false,
+                routeName: this.getRouteName(route.route_id)
               });
             }
           }
@@ -374,21 +378,234 @@ class GTFSService {
         if (!seenRoutes.has(routeKey)) {
           seenRoutes.add(routeKey);
           uniqueRoutes.push(option);
-          
-          // Stop after finding 3 options to keep response time fast
-          if (uniqueRoutes.length >= 3) {
-            break;
-          }
         }
       }
 
-      console.log(`Returning ${uniqueRoutes.length} transit options`);
-      return uniqueRoutes;
+      console.log(`Found ${uniqueRoutes.length} direct route options`);
+      
+      // If no direct routes or if we want more options, look for transfer routes
+      if (uniqueRoutes.length < 3) {
+        console.log('Looking for routes with transfers...');
+        const transferRoutes = this.findRoutesWithTransfers(startStops, endStops, startLat, startLon, endLat, endLon);
+        
+        for (const transferRoute of transferRoutes) {
+          const transferRouteKey = `transfer-${transferRoute.firstLeg}-${transferRoute.secondLeg}-${transferRoute.startStop.stop_id}-${transferRoute.endStop.stop_id}`;
+          
+          if (!seenRoutes.has(transferRouteKey)) {
+            seenRoutes.add(transferRouteKey);
+            uniqueRoutes.push({
+              routeName: transferRoute.routeName,
+              startStop: transferRoute.startStop,
+              endStop: transferRoute.endStop,
+              transferStop: transferRoute.transferStop,
+              startDistance: transferRoute.startDistance,
+              endDistance: transferRoute.endDistance,
+              isTransfer: true,
+              firstLeg: transferRoute.firstLeg,
+              secondLeg: transferRoute.secondLeg
+            });
+          }
+        }
+        
+        // Re-sort all routes by total walking distance
+        uniqueRoutes.sort((a, b) => {
+          const totalDistanceA = a.startDistance + a.endDistance;
+          const totalDistanceB = b.startDistance + b.endDistance;
+          return totalDistanceA - totalDistanceB;
+        });
+        
+        console.log(`Found ${transferRoutes.length} routes with transfers`);
+      }
+      
+      // Limit to 3 best options overall
+      const finalRoutes = uniqueRoutes.slice(0, 3);
+
+      console.log(`Returning ${finalRoutes.length} transit options`);
+      return finalRoutes;
     } catch (error) {
       console.error('Error finding transit routes:', error);
       return [];
     }
   }
+  findRoutesWithTransfers(startStops, endStops, startLat, startLon, endLat, endLon) {
+    const transitOptions = [];
+    
+    // Instead of midpoint, look for known major transit hubs
+    // Add these CDTA hub stops manually - these would be places like downtown Troy, downtown Albany, etc.
+    const majorTransitHubs = [
+      // Add stop_ids of known transfer points in the region
+      // For example, downtown Troy bus plaza, downtown Albany stations, etc.
+      // You can find these by examining your GTFS data
+    ];
+    
+    console.log("Starting transfer route search with expanded parameters");
+    
+    // Find all stops with multiple routes (2 or more)
+    const potentialTransferPoints = this.stops
+      .filter(stop => {
+        const routes = this.getRoutesForStop(stop.stop_id);
+        return routes.length >= 2; // Stops with 2+ routes
+      })
+      .slice(0, 50); // Limit to 50 most promising transfer points
+    
+    console.log(`Found ${potentialTransferPoints.length} potential transfer points (stops with multiple routes)`);
+    
+    // Use all start and end stops, but limit combinations
+    for (const startStop of startStops.slice(0, 5)) {
+      const startRoutes = this.getRoutesForStop(startStop.stop_id);
+      console.log(`Start stop ${startStop.stop_name || startStop.stop_id} has ${startRoutes.length} routes`);
+      
+      if (startRoutes.length === 0) continue;
+      
+      const startStopLat = parseFloat(startStop.stop_lat);
+      const startStopLon = parseFloat(startStop.stop_lon);
+      const startDistance = haversine(
+        { latitude: startLat, longitude: startLon },
+        { latitude: startStopLat, longitude: startStopLon },
+        { unit: 'mile' }
+      );
+      
+      for (const endStop of endStops.slice(0, 5)) {
+        const endRoutes = this.getRoutesForStop(endStop.stop_id);
+        console.log(`End stop ${endStop.stop_name || endStop.stop_id} has ${endRoutes.length} routes`);
+        
+        if (endRoutes.length === 0) continue;
+        
+        const endStopLat = parseFloat(endStop.stop_lat);
+        const endStopLon = parseFloat(endStop.stop_lon);
+        const endDistance = haversine(
+          { latitude: endLat, longitude: endLon },
+          { latitude: endStopLat, longitude: endStopLon },
+          { unit: 'mile' }
+        );
+        
+        // Check for any common transfer points between routes that serve the start stop and end stop
+        for (const transferPoint of potentialTransferPoints) {
+          const transferRoutes = this.getRoutesForStop(transferPoint.stop_id);
+          
+          // Simple approach: look for any route from start to transfer and any route from transfer to end
+          let foundStartRoute = false;
+          let foundEndRoute = false;
+          let startToTransferRoute = null;
+          let transferToEndRoute = null;
+          
+          for (const startRoute of startRoutes) {
+            if (transferRoutes.some(tr => tr.route_id === startRoute.route_id)) {
+              foundStartRoute = true;
+              startToTransferRoute = startRoute;
+              break;
+            }
+          }
+          
+          for (const transferRoute of transferRoutes) {
+            if (endRoutes.some(er => er.route_id === transferRoute.route_id)) {
+              foundEndRoute = true;
+              transferToEndRoute = transferRoute;
+              break;
+            }
+          }
+          
+          if (foundStartRoute && foundEndRoute && startToTransferRoute.route_id !== transferToEndRoute.route_id) {
+            console.log(`Found transfer option: ${this.getRouteName(startToTransferRoute.route_id)} → ${this.getRouteName(transferToEndRoute.route_id)}`);
+            
+            transitOptions.push({
+              routeName: `${this.getRouteName(startToTransferRoute.route_id)} → ${this.getRouteName(transferToEndRoute.route_id)}`,
+              startStop: startStop,
+              transferStop: transferPoint,
+              endStop: endStop,
+              startDistance: startDistance,
+              endDistance: endDistance,
+              firstLeg: startToTransferRoute.route_id,
+              secondLeg: transferToEndRoute.route_id
+            });
+          }
+        }
+      }
+    }
+    
+    console.log(`Found ${transitOptions.length} possible transfer routes`);
+    
+    // Sort by total walking distance
+    transitOptions.sort((a, b) => {
+      return (a.startDistance + a.endDistance) - (b.startDistance + b.endDistance);
+    });
+    
+    // Return only the best few options
+    return transitOptions.slice(0, 3);
+  }
+  logInterCityRoutes() {
+    // Find Troy stops
+    const troyStops = this.stops.filter(stop => 
+      stop.stop_name && stop.stop_name.toLowerCase().includes('troy'));
+    
+    // Find Albany stops
+    const albanyStops = this.stops.filter(stop => 
+      stop.stop_name && stop.stop_name.toLowerCase().includes('albany'));
+    
+    console.log(`Found ${troyStops.length} stops in Troy and ${albanyStops.length} stops in Albany`);
+    
+    // Find routes that serve both cities
+    const troyRouteIds = new Set();
+    const albanyRouteIds = new Set();
+    
+    // Collect Troy route IDs
+    for (const stop of troyStops) {
+      const routes = this.getRoutesForStop(stop.stop_id);
+      for (const route of routes) {
+        troyRouteIds.add(route.route_id);
+      }
+    }
+    
+    // Collect Albany route IDs
+    for (const stop of albanyStops) {
+      const routes = this.getRoutesForStop(stop.stop_id);
+      for (const route of routes) {
+        albanyRouteIds.add(route.route_id);
+      }
+    }
+    
+    // Find intersection
+    const intercityRouteIds = [...troyRouteIds].filter(id => albanyRouteIds.has(id));
+    
+    console.log(`Found ${intercityRouteIds.length} routes that connect Troy and Albany`);
+    for (const routeId of intercityRouteIds) {
+      console.log(`- Route ${this.getRouteName(routeId)}`);
+    }
+  }
+
+  // Check if a trip exists between two stops on a route
+isValidTrip(routeId, fromStopId, toStopId) {
+  // Get all trips for this route
+  const tripsOnRoute = this.trips.filter(trip => trip.route_id === routeId);
+  
+  for (const trip of tripsOnRoute) {
+    // Get all stop times for this trip
+    const stopTimesForTrip = this.stopTimes.filter(st => st.trip_id === trip.trip_id);
+    
+    // Sort by stop_sequence
+    stopTimesForTrip.sort((a, b) => parseInt(a.stop_sequence) - parseInt(b.stop_sequence));
+    
+    // Check if fromStop comes before toStop in this trip
+    const fromStopIndex = stopTimesForTrip.findIndex(st => st.stop_id === fromStopId);
+    const toStopIndex = stopTimesForTrip.findIndex(st => st.stop_id === toStopId);
+    
+    if (fromStopIndex !== -1 && toStopIndex !== -1 && fromStopIndex < toStopIndex) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+  // Get a user-friendly route name
+  getRouteName(routeId) {
+    const route = this.routeMap.get(routeId);
+    if (route) {
+      return route.route_short_name || route.route_long_name || `Route ${routeId}`;
+    }
+    return `Route ${routeId}`;
+  }
+
 }
 
 module.exports = GTFSService;

@@ -266,7 +266,8 @@ const TransitRoutesTab = ({ resource, onRoutesFound }) => {
         body: JSON.stringify({
           resourceLat: resource.latitude,
           resourceLon: resource.longitude,
-          startAddress: searchAddress
+          startAddress: searchAddress,
+          maxDistance: 1.5 // Add this parameter
         })
       });
       
