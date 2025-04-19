@@ -1,8 +1,8 @@
 // client/src/components/MapView.js
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
-import { FaMapMarkerAlt, FaExclamationTriangle, FaBus } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaExclamationTriangle, FaBus, FaExchangeAlt } from 'react-icons/fa';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../styles/MapView.css';
@@ -42,10 +42,27 @@ const MapBoundsUpdater = ({ resources, transitRoutes = [] }) => {
     // Add transit route points
     if (transitRoutes && transitRoutes.length > 0) {
       transitRoutes.forEach(route => {
+        // Add route path points if available
         if (route.path && route.path.length > 0) {
           route.path.forEach(point => {
-            points.push(point);
+            if (Array.isArray(point) && point.length === 2) {
+              points.push(point);
+            }
           });
+        }
+        
+        // Add bus stop points
+        if (route.startStopLat && route.startStopLon) {
+          points.push([parseFloat(route.startStopLat), parseFloat(route.startStopLon)]);
+        }
+        
+        if (route.endStopLat && route.endStopLon) {
+          points.push([parseFloat(route.endStopLat), parseFloat(route.endStopLon)]);
+        }
+        
+        // Add transfer point if exists
+        if (route.transferStopLat && route.transferStopLon) {
+          points.push([parseFloat(route.transferStopLat), parseFloat(route.transferStopLon)]);
         }
       });
     }
@@ -135,23 +152,19 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
     });
   };
 
-  // Route colors for transit lines
-  const getRouteColor = (routeId) => {
-    const routeColors = {
-      default: '#1a73e8',
-      '1': '#EA4335',
-      '2': '#34A853',
-      '3': '#FBBC05',
-      '4': '#4285F4',
-      '5': '#9C27B0'
-    };
-    const routeNumber = routeId?.split('-')?.[0];
-    return routeColors[routeNumber] || routeColors.default;
-  };
-
   // Transit Stop Icon
   const transitStopIcon = new L.Icon({
     iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+
+  // Transfer Stop Icon
+  const transferStopIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
     iconSize: [25, 41],
     iconAnchor: [12, 41],
@@ -204,7 +217,7 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
         {/* Resource markers */}
         {validResources.map((resource) => (
           <Marker
-            key={resource.id}
+            key={`resource-${resource.id}`}
             position={[parseFloat(resource.latitude), parseFloat(resource.longitude)]}
             icon={createResourceIcon(resource.resource_type_id)}
           >
@@ -238,9 +251,83 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
             </Popup>
           </Marker>
         ))}
+
+        {/* Transit Routes */}
+        {transitRoutes && transitRoutes.map((route, index) => {
+          // Ensure path is valid and has data
+          const hasValidPath = route.path && Array.isArray(route.path) && route.path.length > 0;
+          
+          return (
+            <React.Fragment key={`transit-route-${index}`}>
+              {/* Route line */}
+              {hasValidPath && (
+                <Polyline
+                  positions={route.path}
+                  color={route.color || '#4285F4'}
+                  weight={4}
+                  opacity={0.7}
+                >
+                  <Popup>
+                    <div>
+                      <strong>{route.routeName}</strong>
+                      <p>Bus route from {route.startStopName || 'start'} to {route.endStopName || 'end'}</p>
+                    </div>
+                  </Popup>
+                </Polyline>
+              )}
+
+              {/* Start stop marker */}
+              {route.startStopLat && route.startStopLon && (
+                <Marker
+                  position={[parseFloat(route.startStopLat), parseFloat(route.startStopLon)]}
+                  icon={transitStopIcon}
+                >
+                  <Popup>
+                    <div>
+                      <strong>Bus Stop: {route.startStopName || 'Starting Point'}</strong>
+                      <p>Route: {route.routeName}</p>
+                      <p>Walk {route.walkToStartStop} miles to here</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+
+              {/* End stop marker */}
+              {route.endStopLat && route.endStopLon && (
+                <Marker
+                  position={[parseFloat(route.endStopLat), parseFloat(route.endStopLon)]}
+                  icon={transitStopIcon}
+                >
+                  <Popup>
+                    <div>
+                      <strong>Bus Stop: {route.endStopName || 'Ending Point'}</strong>
+                      <p>Route: {route.routeName}</p>
+                      <p>Walk {route.walkFromEndStop} miles from here to destination</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+
+              {/* Transfer point for transfer routes */}
+              {route.isTransfer && route.transferStopLat && route.transferStopLon && (
+                <Marker
+                  position={[parseFloat(route.transferStopLat), parseFloat(route.transferStopLon)]}
+                  icon={transferStopIcon}
+                >
+                  <Popup>
+                    <div>
+                      <strong>Transfer Point: {route.transferStopName || 'Transfer Here'}</strong>
+                      <p>Change from {route.routeName.split(' → ')[0]} to {route.routeName.split(' → ')[1]}</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+            </React.Fragment>
+          );
+        })}
       </MapContainer>
 
-      {/* Map Legend */}
+      {/* Map Legend for Resource Types */}
       <div className="map-legend">
         <h4>Resource Types</h4>
         <div className="legend-items">
@@ -260,6 +347,31 @@ const MapView = ({ resources, transitRoutes = [], showTransitLegend = false }) =
             })}
         </div>
       </div>
+
+      {/* Transit Legend (only shown when there are transit routes) */}
+      {showTransitLegend && transitRoutes && transitRoutes.length > 0 && (
+        <div className="map-legend transit-legend">
+          <h4>Transit Routes</h4>
+          <div className="legend-items">
+            <div className="legend-item">
+              <span className="legend-marker" style={{ backgroundColor: '#34A853' }}></span>
+              <span className="legend-label">Bus Stop</span>
+            </div>
+            {transitRoutes.some(r => r.isTransfer) && (
+              <div className="legend-item">
+                <span className="legend-marker" style={{ backgroundColor: '#FBBC05' }}></span>
+                <span className="legend-label">Transfer Point</span>
+              </div>
+            )}
+            {transitRoutes.map((route, index) => (
+              <div key={`route-legend-${index}`} className="legend-item">
+                <span className="legend-marker" style={{ backgroundColor: route.color || '#4285F4' }}></span>
+                <span className="legend-label">{route.routeName}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {resources.length > validResources.length && (
         <div className="missing-locations-notice">

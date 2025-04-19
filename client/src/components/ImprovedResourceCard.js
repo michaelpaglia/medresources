@@ -38,8 +38,19 @@ const ImprovedResourceCard = ({ resource }) => {
   // Get resource type name from the fetched resource types
   const getResourceTypeName = (typeId) => {
     if (!resourceTypes || !resourceTypes.length) return 'Medical Resource';
-    const foundType = resourceTypes.find(type => type.id === parseInt(typeId));
-    return foundType ? foundType.name : 'Medical Resource';
+    
+    // Convert both to numbers to ensure proper comparison
+    const foundType = resourceTypes.find(type => 
+      Number(type.id) === Number(typeId)
+    );
+    
+    // Use a more specific fallback if possible
+    if (!foundType) {
+      console.log(`Resource type not found for ID: ${typeId}`);
+      return resource.provider_type || 'Medical Resource';
+    }
+    
+    return foundType.name;
   };
 
   // Get resource type color (could be enhanced with colors from the database)

@@ -203,3 +203,34 @@
   margin-top: 8px;
   color: #80868b;
 }
+.stop-name {
+  color: #5f6368;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.transfer-info {
+  color: #ea4335;
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.route-info {
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  color: #5f6368;
+  font-size: 13px;
+}
+
+.info-icon {
+  color: #4285F4;
+  margin-right: 8px;
+}

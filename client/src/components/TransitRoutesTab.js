@@ -5,7 +5,9 @@ import {
   FaMapMarkerAlt, 
   FaWalking,
   FaClock,
-  FaDirections
+  FaDirections,
+  FaInfoCircle,
+  FaExchangeAlt
 } from 'react-icons/fa';
 import '../styles/TransitRoutes.css';
 
@@ -67,10 +69,21 @@ const TransitRoutesTab = ({ resource, onRoutesFound }) => {
     }
   }, []);
   
-  // Pass found routes to parent
+  // Pass found routes to parent with enhanced information
   useEffect(() => {
     if (onRoutesFound && transitRoutes.length > 0) {
-      onRoutesFound(transitRoutes);
+      // Add visualization data for better map display
+      const enhancedRoutes = transitRoutes.map(route => {
+        return {
+          ...route,
+          // Ensure path data is properly formatted for the map
+          path: route.path || [],
+          // Add color information based on route type
+          color: route.isTransfer ? '#4285F4' : '#34A853'
+        };
+      });
+      
+      onRoutesFound(enhancedRoutes);
     }
   }, [transitRoutes, onRoutesFound]);
   
@@ -378,25 +391,88 @@ const TransitRoutesTab = ({ resource, onRoutesFound }) => {
               <div className="route-header">
                 <FaBus className="route-icon" />
                 <h4>{route.routeName}</h4>
-                {route.estimatedTime && (
-                  <div className="route-time">
-                    <FaClock className="time-icon" />
-                    <span>{formatTime(route.estimatedTime)}</span>
-                  </div>
-                )}
+                <div className="route-time">
+                  <FaClock className="time-icon" />
+                  <span>{formatTime(route.estimatedTime)}</span>
+                </div>
               </div>
-              <div className="route-details">
-                <div className="route-step">
-                  <FaWalking className="step-icon" />
-                  <span>Walk {route.walkToStartStop} miles to bus stop</span>
+              
+              {route.isTransfer ? (
+                // Transfer route steps display
+                <div className="route-details">
+                  <div className="route-step">
+                    <FaWalking className="step-icon" />
+                    <span>
+                      <strong>Walk {route.walkToStartStop} miles</strong> to first bus stop
+                      <div className="stop-name">{route.startStopName || 'Bus stop'}</div>
+                    </span>
+                  </div>
+                  
+                  <div className="route-step">
+                    <FaBus className="step-icon" />
+                    <span>
+                      <strong>Take {route.routeName.split(' → ')[0]} bus</strong>
+                    </span>
+                  </div>
+                  
+                  <div className="route-step transfer-step">
+                    <FaExchangeAlt className="step-icon" />
+                    <span>
+                      <strong>Transfer at bus stop</strong>
+                      <div className="stop-name">{route.transferStopName || 'Transfer point'}</div>
+                    </span>
+                  </div>
+                  
+                  <div className="route-step">
+                    <FaBus className="step-icon" />
+                    <span>
+                      <strong>Take {route.routeName.split(' → ')[1]} bus</strong>
+                    </span>
+                  </div>
+                  
+                  <div className="route-step">
+                    <FaWalking className="step-icon" />
+                    <span>
+                      <strong>Walk {route.walkFromEndStop} miles</strong> to destination
+                      <div className="stop-name">{route.endStopName || 'Destination stop'}</div>
+                    </span>
+                  </div>
                 </div>
-                <div className="route-step">
-                  <FaBus className="step-icon" />
-                  <span>Take <strong>{route.routeName}</strong> bus</span>
+              ) : (
+                // Direct route steps display
+                <div className="route-details">
+                  <div className="route-step">
+                    <FaWalking className="step-icon" />
+                    <span>
+                      <strong>Walk {route.walkToStartStop} miles</strong> to bus stop
+                      <div className="stop-name">{route.startStopName || 'Bus stop'}</div>
+                    </span>
+                  </div>
+                  
+                  <div className="route-step">
+                    <FaBus className="step-icon" />
+                    <span>
+                      <strong>Take {route.routeName} bus</strong>
+                    </span>
+                  </div>
+                  
+                  <div className="route-step">
+                    <FaWalking className="step-icon" />
+                    <span>
+                      <strong>Walk {route.walkFromEndStop} miles</strong> to destination
+                      <div className="stop-name">{route.endStopName || 'Destination stop'}</div>
+                    </span>
+                  </div>
                 </div>
-                <div className="route-step">
-                  <FaWalking className="step-icon" />
-                  <span>Walk {route.walkFromEndStop} miles to destination</span>
+              )}
+              
+              <div className="route-info">
+                <div className="info-item">
+                  <FaInfoCircle className="info-icon" />
+                  <span>
+                    Total estimated time: <strong>{formatTime(route.estimatedTime)}</strong>
+                    {route.isTransfer && <span> (includes transfer time)</span>}
+                  </span>
                 </div>
               </div>
               

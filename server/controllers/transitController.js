@@ -33,12 +33,13 @@ async function getRouteGeometry(startLat, startLon, endLat, endLon) {
 
 async function findTransitRoutes(req, res) {
   try {
-    const { resourceLat, resourceLon, startAddress } = req.body;
+    const { resourceLat, resourceLon, startAddress, maxDistance = 1.5 } = req.body;
     
     console.log('Transit route request:', {
       resourceLat, 
       resourceLon,
-      startAddress
+      startAddress,
+      maxDistance
     });
 
     if (!startAddress) {
@@ -66,17 +67,17 @@ async function findTransitRoutes(req, res) {
 
     // Add a timeout for the search operation
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Transit route search timed out')), 5000);
+      setTimeout(() => reject(new Error('Transit route search timed out')), 10000);
     });
     
-    // Call the transit route search with a much smaller search radius
+    // Call the transit route search with the specified search radius
     const searchPromise = Promise.resolve().then(() => {
       return gtfsService.findTransitRoutes(
         startLocation.latitude,
         startLocation.longitude,
         parseFloat(resourceLat),
         parseFloat(resourceLon),
-        0.5 // Smaller radius for much faster results
+        parseFloat(maxDistance) // Use the provided maxDistance or default
       );
     });
     
@@ -86,33 +87,78 @@ async function findTransitRoutes(req, res) {
 
     // Process each transit option to add realistic routes
     const enhancedTransitOptions = await Promise.all(transitOptions.map(async option => {
-      // Get realistic route path
-      const routePath = await getRouteGeometry(
-        option.startStop.stop_lat, 
-        option.startStop.stop_lon,
-        option.endStop.stop_lat,
-        option.endStop.stop_lon
-      );
-      
-      return {
-        routeName: option.route.route_long_name || option.route.route_short_name,
-        routeId: option.route.route_id,
-        routeUrl: option.route.route_url,
-        startStopName: option.startStop.stop_name,
-        endStopName: option.endStop.stop_name,
-        walkToStartStop: option.startDistance.toFixed(2),
-        walkFromEndStop: option.endDistance.toFixed(2),
-        startStopLat: option.startStop.stop_lat,
-        startStopLon: option.startStop.stop_lon,
-        endStopLat: option.endStop.stop_lat,
-        endStopLon: option.endStop.stop_lon,
-        // Add the realistic route path
-        path: routePath,
-        // Add estimated time based on distance
-        estimatedTime: Math.round((option.startDistance + option.endDistance) * 15) // rough estimate
-      };
-    }));
-
+      try {
+        // Get realistic route path
+        const routePath = await getRouteGeometry(
+          parseFloat(option.startStop.stop_lat), 
+          parseFloat(option.startStop.stop_lon),
+          parseFloat(option.endStop.stop_lat),
+          parseFloat(option.endStop.stop_lon)
+        );
+        
+        // Different handling for transfer routes vs direct routes
+        if (option.isTransfer) {
+          // For transfer routes
+          return {
+            routeName: option.routeName,
+            routeId: `${option.firstLeg}-${option.secondLeg}`,
+            routeUrl: null,
+            startStopName: option.startStop.stop_name || 'Unknown stop',
+            endStopName: option.endStop.stop_name || 'Unknown stop',
+            transferStopName: option.transferStop ? (option.transferStop.stop_name || 'Transfer point') : 'Transfer point',
+            walkToStartStop: option.startDistance ? option.startDistance.toFixed(2) : '0.00',
+            walkFromEndStop: option.endDistance ? option.endDistance.toFixed(2) : '0.00',
+            startStopLat: option.startStop.stop_lat,
+            startStopLon: option.startStop.stop_lon,
+            endStopLat: option.endStop.stop_lat,
+            endStopLon: option.endStop.stop_lon,
+            transferStopLat: option.transferStop ? option.transferStop.stop_lat : null,
+            transferStopLon: option.transferStop ? option.transferStop.stop_lon : null,
+            path: routePath,
+            isTransfer: true,
+            estimatedTime: Math.round((option.startDistance + option.endDistance) * 15 + 15)
+          };
+        } else {
+          // For direct routes - handle the case where route might be undefined
+          const routeName = option.routeName || 
+                           (option.route ? (option.route.route_long_name || option.route.route_short_name || `Route ${option.route.route_id}`) : 'Unknown Route');
+          
+          return {
+            routeName: routeName,
+            routeId: option.route ? option.route.route_id : 'unknown',
+            routeUrl: option.route ? option.route.route_url : null,
+            startStopName: option.startStop.stop_name || 'Unknown stop',
+            endStopName: option.endStop.stop_name || 'Unknown stop',
+            walkToStartStop: option.startDistance ? option.startDistance.toFixed(2) : '0.00',
+            walkFromEndStop: option.endDistance ? option.endDistance.toFixed(2) : '0.00',
+            startStopLat: option.startStop.stop_lat,
+            startStopLon: option.startStop.stop_lon,
+            endStopLat: option.endStop.stop_lat,
+            endStopLon: option.endStop.stop_lon,
+            path: routePath,
+            isTransfer: false,
+            estimatedTime: Math.round((option.startDistance + option.endDistance) * 15)
+          };
+        }
+      } catch (error) {
+        console.error('Error processing transit route:', error);
+        // Return a minimal valid object if there's an error
+        return {
+          routeName: 'Route processing error',
+          routeId: 'error',
+          startStopName: 'Unknown',
+          endStopName: 'Unknown',
+          walkToStartStop: '0.00',
+          walkFromEndStop: '0.00',
+          estimatedTime: 0,
+          error: error.message
+        };
+      }
+    })).catch(error => {
+      console.error('Error in transit route processing:', error);
+      return []; // Return empty array if the overall process fails
+    });
+    
     res.json(enhancedTransitOptions);
   } catch (error) {
     console.error('Error finding transit routes:', error);
@@ -125,7 +171,7 @@ async function findTransitRoutes(req, res) {
 
 async function findTransitRoutesByCoords(req, res) {
   try {
-    const { startLat, startLon, endLat, endLon } = req.query;
+    const { startLat, startLon, endLat, endLon, maxDistance = 1.5 } = req.query;
 
     if (!startLat || !startLon || !endLat || !endLon) {
       return res.status(400).json({ error: 'Missing coordinates' });
@@ -135,7 +181,8 @@ async function findTransitRoutesByCoords(req, res) {
       startLat,
       startLon,
       endLat,
-      endLon
+      endLon,
+      maxDistance
     });
 
     const transitOptions = await gtfsService.findTransitRoutes(
@@ -143,7 +190,7 @@ async function findTransitRoutesByCoords(req, res) {
       parseFloat(startLon),
       parseFloat(endLat),
       parseFloat(endLon),
-      0.5
+      parseFloat(maxDistance)
     );
 
     console.log(`Found ${transitOptions.length} transit options`);
@@ -168,15 +215,15 @@ async function findTransitRoutesByCoords(req, res) {
             routeUrl: null, // Transfer routes may not have a direct URL
             startStopName: option.startStop.stop_name || 'Unknown stop',
             endStopName: option.endStop.stop_name || 'Unknown stop',
-            transferStopName: option.transferStop.stop_name || 'Transfer point',
+            transferStopName: option.transferStop ? option.transferStop.stop_name || 'Transfer point' : 'Transfer point',
             walkToStartStop: option.startDistance ? option.startDistance.toFixed(2) : '0.00',
             walkFromEndStop: option.endDistance ? option.endDistance.toFixed(2) : '0.00',
             startStopLat: option.startStop.stop_lat,
             startStopLon: option.startStop.stop_lon,
             endStopLat: option.endStop.stop_lat,
             endStopLon: option.endStop.stop_lon,
-            transferStopLat: option.transferStop.stop_lat,
-            transferStopLon: option.transferStop.stop_lon,
+            transferStopLat: option.transferStop ? option.transferStop.stop_lat : null,
+            transferStopLon: option.transferStop ? option.transferStop.stop_lon : null,
             path: routePath,
             isTransfer: true,
             // Add extra time for transfer
@@ -185,10 +232,9 @@ async function findTransitRoutesByCoords(req, res) {
         } else {
           // Handle direct routes
           // Make sure route object exists and has necessary properties
-          const routeName = option.route ? 
-            (option.route.route_long_name || option.route.route_short_name || 
-            option.routeName || `Route ${option.route.route_id || 'Unknown'}`) :
-            (option.routeName || 'Unknown Route');
+          const routeName = option.routeName || 
+                           (option.route ? (option.route.route_long_name || option.route.route_short_name || 
+                           `Route ${option.route.route_id || 'Unknown'}`) : 'Unknown Route');
           
           const routeId = option.route ? option.route.route_id : 'unknown';
           const routeUrl = option.route ? option.route.route_url : null;
